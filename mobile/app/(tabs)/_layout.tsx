@@ -4,7 +4,7 @@ import { Ionicons, FontAwesome6, MaterialCommunityIcons } from "@expo/vector-ico
 export default function TabLayout() {
     return (
         <Tabs screenOptions={{
-            tabBarActiveTintColor: 'red',
+            tabBarActiveTintColor: 'black',
             headerShown: false
         }}>
             <Tabs.Screen
