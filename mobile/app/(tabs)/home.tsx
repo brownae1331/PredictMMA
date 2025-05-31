@@ -1,23 +1,68 @@
 import React from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 
 export default function HomeScreen() {
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <View style={styles.container}>
             {/* Header Banner */}
-            <View className="bg-blue-500 p-4">
-                <Text className="text-white text-center font-bold text-lg">
-                    🚀 Welcome to the App!
-                </Text>
+            <View style={styles.header}>
+                <View style={styles.headerContent}>
+                    <Image source={require('../../assets/images/brain.png')} style={styles.headerImage} />
+                    <Text style={styles.headerText}>PredictMMA</Text>
+                </View>
             </View>
 
             {/* Main Content */}
-            <View className="flex-1 justify-center items-center px-4">
-                <Text className="text-2xl font-bold mb-2">Welcome Home</Text>
-                <Text className="text-base text-gray-600 text-center">
+            <View style={styles.mainContent}>
+                <Text style={styles.welcomeTitle}>Welcome Home</Text>
+                <Text style={styles.welcomeSubtitle}>
                     This is your home screen
                 </Text>
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: 'light-grey',
+    },
+    header: {
+        backgroundColor: 'white',
+        padding: 10,
+    },
+    headerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 50,
+    },
+    headerImage: {
+        width: 36,
+        height: 36,
+        marginRight: 8,
+    },
+    headerText: {
+        color: 'black',
+        fontWeight: 'bold',
+        fontSize: 18,
+    },
+    mainContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+    },
+    welcomeTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    welcomeSubtitle: {
+        fontSize: 16,
+        color: '#4b5563',
+        textAlign: 'center',
+    },
+});
