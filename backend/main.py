@@ -6,4 +6,5 @@ app = FastAPI()
 @app.get("/")
 def read_root():
     scraper = UFCEventsScraper()
-    return scraper.get_upcoming_event_links()
+    events = scraper.get_upcoming_event_links()
+    return scraper.get_event_data(events[0])
