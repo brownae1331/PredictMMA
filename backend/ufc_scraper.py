@@ -63,10 +63,33 @@ class UFCEventsScraper:
         event_data = {
             "event_title": soup.find("h2").text.strip(),
             "event_date": event_date_bst,
+            "event_venue": soup.find("span", string="Venue:").parent.find("span", class_="text-neutral-700").text.strip(),
             "event_location": soup.find("span", string="Location:").parent.find("span", class_="text-neutral-700").text.strip(),
         }
 
-        print(event_data)
-        print(event_data["event_date"].time())
         return event_data
     
+    def get_fight_data(self, event_link: str) -> list[dict]:
+        """Scrapes the fight data and returns data for each fight and fighter"""
+        response = requests.get(event_link, headers=self.headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        fight_data_list = []
+        fight_containers = soup.find_all("div", class_="div flex flex-col mt-3 mb-4 md:mt-2.5 md:mb-2.5 w-full fullsize")
+
+        for container in fight_containers:
+            fighter_links = list(set([f"https://www.tapology.com{link['href']}" for link in container.find_all("a", class_="link-primary-red")]))
+            fighter_images = [img['src'] for img in container.find_all("img", class_="w-[77px] h-[77px] md:w-[104px] md:h-[104px] rounded")]
+
+            fight_data = {
+                "fighter_1": fighter_links[1],
+                "fighter_2": fighter_links[0],
+                "fighter_1_image": fighter_images[0],
+                "fighter_2_image": fighter_images[1],
+                "card_position": container.find("span", class_="text-xs11 md:text-xs10 uppercase font-bold").text.strip(),
+                "fight_weight": container.find("span", class_="bg-tap_darkgold px-1.5 md:px-1 leading-[23px] text-sm md:text-[13px] text-neutral-50 rounded").text.strip(),
+                "num_rounds": container.find("div", class_="div text-xs11").text.strip(),
+            }
+            fight_data_list.append(fight_data)
+
+        return fight_data_list
