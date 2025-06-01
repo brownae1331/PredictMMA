@@ -91,11 +91,22 @@ class UFCEventsScraper:
         event_date_et = datetime.strptime(date_text, '%A %m.%d.%Y at %I:%M %p ET').replace(tzinfo=ZoneInfo('America/New_York'))
         event_date_bst = event_date_et.astimezone(ZoneInfo('Europe/London'))
 
+        flag_div = soup.find("div", class_="div h-[14px]")
+        flag_img = flag_div.find("img") if flag_div else None
+        flag_src = None
+
+        if flag_img and flag_img.get('src'):
+            flag_src = flag_img['src']
+            # Convert relative URL to absolute if needed
+            if flag_src.startswith('/'):
+                flag_src = f"https://www.tapology.com{flag_src}"
+
         event_data = {
             "event_title": soup.find("h2").text.strip(),
-            "event_date": event_date_bst.isoformat(),  # Convert to ISO string for JSON serialization
+            "event_date": event_date_bst.isoformat(),
             "event_venue": soup.find("span", string="Venue:").parent.find("span", class_="text-neutral-700").text.strip(),
             "event_location": soup.find("span", string="Location:").parent.find("span", class_="text-neutral-700").text.strip(),
+            "event_location_flag": flag_src,
             "event_fight_data": self.get_fight_data(event_link)
         }
 
