@@ -1,11 +1,93 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 
+interface Fight {
+    fighter_1_link: string;
+    fighter_2_link: string;
+    fighter_1_name: string;
+    fighter_2_name: string;
+    fighter_1_image: string;
+    fighter_2_image: string;
+    card_position: string;
+    fight_weight: string;
+    num_rounds: string;
+}
+
+interface Event {
+    event_title: string;
+    event_date: string;
+    event_venue: string;
+    event_location: string;
+    event_fight_data: Fight[];
+}
+
 export default function HomeScreen() {
+    const [events, setEvents] = useState<Event[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchUpcomingEvents();
+    }, []);
+
+    const fetchUpcomingEvents = async () => {
+        try {
+            console.log('Fetching upcoming events...');
+            const response = await fetch('http://192.168.1.106:8000/upcoming-events');
+
+            console.log('Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.log('Error response:', errorText);
+                throw new Error(`Failed to fetch events: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('Received data:', data);
+            setEvents(data);
+        } catch (err) {
+            console.error('Fetch error:', err);
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const renderFightCard = (fight: Fight, index: number) => {
+        return (
+            <View key={index} style={styles.fightCard}>
+                <View style={styles.fightInfo}>
+                    <Text style={styles.cardPosition}>{fight.card_position}</Text>
+                    <Text style={styles.weightClass}>{fight.fight_weight}</Text>
+                </View>
+                <View style={styles.fightersContainer}>
+                    <View style={styles.fighter}>
+                        <Image
+                            source={{ uri: fight.fighter_1_image }}
+                            style={styles.fighterImage}
+                            contentFit="cover"
+                        />
+                        <Text style={styles.fighterName} numberOfLines={2}>{fight.fighter_1_name}</Text>
+                    </View>
+                    <Text style={styles.vsText}>VS</Text>
+                    <View style={styles.fighter}>
+                        <Image
+                            source={{ uri: fight.fighter_2_image }}
+                            style={styles.fighterImage}
+                            contentFit="cover"
+                        />
+                        <Text style={styles.fighterName} numberOfLines={2}>{fight.fighter_2_name}</Text>
+                    </View>
+                </View>
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
-            {/* Header Banner */}
+            {/* Header Banner - Fixed at top */}
             <View style={styles.header}>
                 <View style={styles.headerContent}>
                     <Image source={require('../../assets/images/brain.png')} style={styles.headerImage} />
@@ -13,13 +95,37 @@ export default function HomeScreen() {
                 </View>
             </View>
 
-            {/* Main Content */}
-            <View style={styles.mainContent}>
-                <Text style={styles.welcomeTitle}>Welcome Home</Text>
-                <Text style={styles.welcomeSubtitle}>
-                    This is your home screen
-                </Text>
-            </View>
+            {/* Scrollable Content */}
+            <ScrollView style={styles.scrollView}>
+                <View style={styles.mainContent}>
+                    <Text style={styles.welcomeTitle}>Upcoming Fights</Text>
+
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#000" style={styles.loader} />
+                    ) : error ? (
+                        <Text style={styles.errorText}>Error: {error}</Text>
+                    ) : (
+                        events.map((event, eventIndex) => (
+                            <View key={eventIndex} style={styles.eventContainer}>
+                                <Text style={styles.eventTitle}>{event.event_title}</Text>
+                                <Text style={styles.eventDate}>
+                                    {new Date(event.event_date).toLocaleDateString()} at {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                                <Text style={styles.eventLocation}>
+                                    {event.event_venue}, {event.event_location}
+                                </Text>
+
+                                {/* Show main card fights */}
+                                {event.event_fight_data
+                                    .filter(fight => fight.card_position.toLowerCase().includes('main'))
+                                    .slice(0, 3)
+                                    .map((fight, fightIndex) => renderFightCard(fight, fightIndex))
+                                }
+                            </View>
+                        ))
+                    )}
+                </View>
+            </ScrollView>
         </View>
     );
 }
@@ -27,11 +133,19 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'light-grey',
+        backgroundColor: '#f5f5f5',
     },
     header: {
         backgroundColor: 'white',
         padding: 10,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     headerContent: {
         flexDirection: 'row',
@@ -49,20 +163,104 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 18,
     },
-    mainContent: {
+    scrollView: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+    },
+    mainContent: {
         paddingHorizontal: 16,
+        paddingTop: 20,
     },
     welcomeTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    welcomeSubtitle: {
-        fontSize: 16,
-        color: '#4b5563',
+        marginBottom: 20,
         textAlign: 'center',
+    },
+    loader: {
+        marginTop: 50,
+    },
+    errorText: {
+        fontSize: 16,
+        color: 'red',
+        textAlign: 'center',
+        marginTop: 20,
+    },
+    eventContainer: {
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 16,
+        marginBottom: 20,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+        elevation: 3,
+    },
+    eventTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 5,
+        textAlign: 'center',
+    },
+    eventDate: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+        marginBottom: 5,
+    },
+    eventLocation: {
+        fontSize: 14,
+        color: '#888',
+        textAlign: 'center',
+        marginBottom: 15,
+    },
+    fightCard: {
+        backgroundColor: '#f9f9f9',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 10,
+    },
+    fightInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    cardPosition: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#d4af37',
+    },
+    weightClass: {
+        fontSize: 12,
+        color: '#666',
+    },
+    fightersContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    fighter: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    fighterImage: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        marginBottom: 5,
+    },
+    fighterName: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    vsText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#666',
+        marginHorizontal: 10,
     },
 });
