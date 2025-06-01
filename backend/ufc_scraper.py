@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class UFCEventsScraper:
     def __init__(self):
@@ -29,21 +30,52 @@ class UFCEventsScraper:
     def get_upcoming_event_links(self) -> list[str]:
         """Scrapes the event links and returns the links to the upcoming events"""
         event_links = self.get_event_links()
+        current_date = datetime.now().date()
+        
+        def check_event_date(session, link):
+            try:
+                response = session.get(link, headers=self.headers, timeout=10)
+                soup = BeautifulSoup(response.text, "html.parser")
+
+                date_span = soup.find("span", string="Date/Time:")
+                if not date_span:
+                    return None
+                
+                date_container = date_span.parent
+                date_span = date_container.find("span", class_="text-neutral-700")
+                
+                if not date_span:
+                    return None
+                
+                date_text = date_span.text.strip()
+                event_date = (datetime.strptime(date_text, '%A %m.%d.%Y at %I:%M %p ET') + timedelta(days=1)).date()
+
+                if event_date >= current_date:
+                    print(event_date)
+                    return link
+            except Exception as e:
+                print(f"Error processing {link}: {e}")
+            return None
+        
+        # Use ThreadPoolExecutor for concurrent requests with session reuse
+        with requests.Session() as session:
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                # Submit all futures and map them to their original links
+                future_to_link = {executor.submit(check_event_date, session, link): link for link in event_links}
+                
+                # Wait for all futures to complete and store results
+                results = {}
+                for future in as_completed(future_to_link):
+                    link = future_to_link[future]
+                    result = future.result()
+                    results[link] = result
+        
+        # Build the upcoming_event_links list in the original order
         upcoming_event_links = []
         for link in event_links:
-            response = requests.get(link, headers=self.headers)
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            date_span = soup.find("span", string="Date/Time:")
-            date_container = date_span.parent
-            
-            date_span = date_container.find("span", class_="text-neutral-700")
-            date_text = date_span.text.strip()
-            event_date = (datetime.strptime(date_text, '%A %m.%d.%Y at %I:%M %p ET') + timedelta(days=1)).date()
-
-            if event_date >= datetime.now().date():
-                upcoming_event_links.append(link)
-                print(event_date)
+            if results.get(link):
+                upcoming_event_links.append(results[link])
+        
         return upcoming_event_links
     
     def get_event_data(self, event_link: str) -> dict:
