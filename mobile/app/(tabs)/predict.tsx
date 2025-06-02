@@ -1,14 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-
-interface Event {
-    event_title: string;
-    event_date: string;
-    event_venue: string;
-    event_location: string;
-    event_location_flag: string | null;
-}
+import { Event } from '../../types';
+import { ApiService } from '../../services/api';
 
 export default function PredictScreen() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -22,19 +16,9 @@ export default function PredictScreen() {
     const fetchUpcomingEvents = async () => {
         try {
             console.log('Fetching upcoming events...');
-            const response = await fetch('http://192.168.1.106:8000/all-upcoming-events');
-
-            console.log('Response status:', response.status);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.log('Error response:', errorText);
-                throw new Error(`Failed to fetch events: ${response.status} ${response.statusText}`);
-            }
-
-            const data = await response.json();
+            const data = await ApiService.getAllUpcomingEvents();
             console.log('Received data:', data);
-            setEvents(data);
+            setEvents(data as unknown as Event[]);
         } catch (err) {
             console.error('Fetch error:', err);
             setError(err instanceof Error ? err.message : 'An error occurred');

@@ -1,26 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-
-interface Fight {
-    fighter_1_link: string;
-    fighter_2_link: string;
-    fighter_1_name: string;
-    fighter_2_name: string;
-    fighter_1_image: string;
-    fighter_2_image: string;
-    card_position: string;
-    fight_weight: string;
-    num_rounds: string;
-}
-
-interface Event {
-    event_title: string;
-    event_date: string;
-    event_venue: string;
-    event_location: string;
-    event_fight_data: Fight[];
-}
+import { router } from 'expo-router';
+import { Event, Fight } from '../../types';
+import { ApiService } from '../../services/api';
 
 export default function HomeScreen() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -34,25 +17,24 @@ export default function HomeScreen() {
     const fetchUpcomingEvents = async () => {
         try {
             console.log('Fetching upcoming events...');
-            const response = await fetch('http://192.168.1.106:8000/upcoming-events');
-
-            console.log('Response status:', response.status);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.log('Error response:', errorText);
-                throw new Error(`Failed to fetch events: ${response.status} ${response.statusText}`);
-            }
-
-            const data = await response.json();
+            const data = await ApiService.getUpcomingEvents();
             console.log('Received data:', data);
-            setEvents(data);
+            setEvents(data as unknown as Event[]);
         } catch (err) {
             console.error('Fetch error:', err);
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleEventPress = (event: Event) => {
+        router.push({
+            pathname: '/event-details',
+            params: {
+                eventData: JSON.stringify(event)
+            }
+        });
     };
 
     const renderFightCard = (fight: Fight, index: number) => {
@@ -123,21 +105,29 @@ export default function HomeScreen() {
                         <ActivityIndicator size="large" color="#000" style={styles.loader} />
                     ) : error ? (
                         <Text style={styles.errorText}>Error: {error}</Text>
+                    ) : events.length === 0 ? (
+                        <Text style={styles.noEventsText}>No upcoming events found</Text>
                     ) : (
                         events.map((event, eventIndex) => (
-                            <View key={eventIndex} style={styles.eventContainer}>
-                                <Text style={styles.eventTitle} numberOfLines={1}>
-                                    {event.event_title.split(':')[0]}
-                                </Text>
-                                <Text style={styles.eventDate}>
-                                    {new Date(event.event_date).toLocaleDateString()} at {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </Text>
+                            <TouchableOpacity
+                                key={eventIndex}
+                                onPress={() => handleEventPress(event)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.eventContainer}>
+                                    <Text style={styles.eventTitle} numberOfLines={1}>
+                                        {event.event_title.split(':')[0]}
+                                    </Text>
+                                    <Text style={styles.eventDate}>
+                                        {new Date(event.event_date).toLocaleDateString()} at {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </Text>
 
-                                {/* Show only the first fight */}
-                                {event.event_fight_data.length > 0 &&
-                                    renderFightCard(event.event_fight_data[0], 0)
-                                }
-                            </View>
+                                    {/* Show only the first fight */}
+                                    {event.event_fight_data.length > 0 &&
+                                        renderFightCard(event.event_fight_data[0], 0)
+                                    }
+                                </View>
+                            </TouchableOpacity>
                         ))
                     )}
                 </View>
@@ -185,6 +175,7 @@ const styles = StyleSheet.create({
     mainContent: {
         paddingHorizontal: 16,
         paddingTop: 20,
+        paddingBottom: 20,
     },
     welcomeTitle: {
         fontSize: 24,
@@ -198,6 +189,12 @@ const styles = StyleSheet.create({
     errorText: {
         fontSize: 16,
         color: 'red',
+        textAlign: 'center',
+        marginTop: 20,
+    },
+    noEventsText: {
+        fontSize: 16,
+        color: '#666',
         textAlign: 'center',
         marginTop: 20,
     },
