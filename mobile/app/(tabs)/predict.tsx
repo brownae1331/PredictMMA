@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { Event } from '../../types';
 import { ApiService } from '../../services/api';
 
@@ -27,11 +28,24 @@ export default function PredictScreen() {
         }
     };
 
+    const handleEventPress = (event: Event) => {
+        router.push({
+            pathname: '/event-details',
+            params: {
+                eventData: JSON.stringify(event)
+            }
+        });
+    };
+
     const renderEventCard = (event: Event, index: number) => {
         console.log('Event flag URL:', event.event_location_flag);
 
         return (
-            <View key={index}>
+            <TouchableOpacity
+                key={index}
+                onPress={() => handleEventPress(event)}
+                activeOpacity={0.7}
+            >
                 <View style={styles.eventCard}>
                     <View style={styles.eventHeader}>
                         <Text style={styles.eventTitle}>{event.event_title}</Text>
@@ -67,7 +81,7 @@ export default function PredictScreen() {
 
                 {/* Separator line between events */}
                 {index < events.length - 1 && <View style={styles.separator} />}
-            </View>
+            </TouchableOpacity>
         );
     };
 
