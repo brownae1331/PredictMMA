@@ -56,12 +56,21 @@ export default function HomeScreen() {
     };
 
     const renderFightCard = (fight: Fight, index: number) => {
+        const formatFighterName = (fullName: string) => {
+            const nameParts = fullName.trim().split(' ');
+            if (nameParts.length === 1) {
+                return { firstName: nameParts[0], lastName: '' };
+            }
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(' ');
+            return { firstName, lastName };
+        };
+
+        const fighter1Name = formatFighterName(fight.fighter_1_name);
+        const fighter2Name = formatFighterName(fight.fighter_2_name);
+
         return (
             <View key={index} style={styles.fightCard}>
-                <View style={styles.fightInfo}>
-                    <Text style={styles.cardPosition}>{fight.card_position}</Text>
-                    <Text style={styles.weightClass}>{fight.fight_weight}</Text>
-                </View>
                 <View style={styles.fightersContainer}>
                     <View style={styles.fighter}>
                         <Image
@@ -69,7 +78,12 @@ export default function HomeScreen() {
                             style={styles.fighterImage}
                             contentFit="cover"
                         />
-                        <Text style={styles.fighterName} numberOfLines={2}>{fight.fighter_1_name}</Text>
+                        <View style={styles.fighterNameContainer}>
+                            <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
+                            {fighter1Name.lastName !== '' && (
+                                <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
+                            )}
+                        </View>
                     </View>
                     <Text style={styles.vsText}>VS</Text>
                     <View style={styles.fighter}>
@@ -78,7 +92,12 @@ export default function HomeScreen() {
                             style={styles.fighterImage}
                             contentFit="cover"
                         />
-                        <Text style={styles.fighterName} numberOfLines={2}>{fight.fighter_2_name}</Text>
+                        <View style={styles.fighterNameContainer}>
+                            <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
+                            {fighter2Name.lastName !== '' && (
+                                <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
+                            )}
+                        </View>
                     </View>
                 </View>
             </View>
@@ -107,19 +126,16 @@ export default function HomeScreen() {
                     ) : (
                         events.map((event, eventIndex) => (
                             <View key={eventIndex} style={styles.eventContainer}>
-                                <Text style={styles.eventTitle}>{event.event_title}</Text>
+                                <Text style={styles.eventTitle} numberOfLines={1}>
+                                    {event.event_title.split(':')[0]}
+                                </Text>
                                 <Text style={styles.eventDate}>
                                     {new Date(event.event_date).toLocaleDateString()} at {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </Text>
-                                <Text style={styles.eventLocation}>
-                                    {event.event_venue}, {event.event_location}
-                                </Text>
 
-                                {/* Show main card fights */}
-                                {event.event_fight_data
-                                    .filter(fight => fight.card_position.toLowerCase().includes('main'))
-                                    .slice(0, 3)
-                                    .map((fight, fightIndex) => renderFightCard(fight, fightIndex))
+                                {/* Show only the first fight */}
+                                {event.event_fight_data.length > 0 &&
+                                    renderFightCard(event.event_fight_data[0], 0)
                                 }
                             </View>
                         ))
@@ -188,7 +204,7 @@ const styles = StyleSheet.create({
     eventContainer: {
         backgroundColor: 'white',
         borderRadius: 10,
-        padding: 16,
+        padding: 20,
         marginBottom: 20,
         shadowColor: '#000',
         shadowOffset: {
@@ -200,42 +216,19 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     eventTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 5,
+        marginBottom: 8,
         textAlign: 'center',
     },
     eventDate: {
         fontSize: 16,
         color: '#666',
         textAlign: 'center',
-        marginBottom: 5,
-    },
-    eventLocation: {
-        fontSize: 14,
-        color: '#888',
-        textAlign: 'center',
-        marginBottom: 15,
+        marginBottom: 20,
     },
     fightCard: {
-        backgroundColor: '#f9f9f9',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 10,
-    },
-    fightInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-    },
-    cardPosition: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#d4af37',
-    },
-    weightClass: {
-        fontSize: 12,
-        color: '#666',
+        padding: 16,
     },
     fightersContainer: {
         flexDirection: 'row',
@@ -247,20 +240,33 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     fighterImage: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
-        marginBottom: 5,
+        width: 150,
+        height: 150,
+        borderRadius: 12,
+        marginBottom: 12,
     },
-    fighterName: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        textAlign: 'center',
+    fighterNameContainer: {
+        alignItems: 'center',
+        minHeight: 40,
+        justifyContent: 'center',
     },
-    vsText: {
+    fighterFirstName: {
         fontSize: 16,
         fontWeight: 'bold',
+        textAlign: 'center',
+        paddingHorizontal: 4,
+    },
+    fighterLastName: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        paddingHorizontal: 4,
+        marginTop: 2,
+    },
+    vsText: {
+        fontSize: 24,
+        fontWeight: 'bold',
         color: '#666',
-        marginHorizontal: 10,
+        marginHorizontal: 20,
     },
 });
