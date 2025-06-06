@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Event, Fight } from '../../types';
-import { ApiService } from '../../services/api';
+import { getUpcomingEvents } from '../../lib/api';
 
 export default function HomeScreen() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -17,7 +17,7 @@ export default function HomeScreen() {
     const fetchUpcomingEvents = async () => {
         try {
             console.log('Fetching upcoming events...');
-            const data = await ApiService.getUpcomingEvents();
+            const data = await getUpcomingEvents();
             console.log('Received data:', data);
             setEvents(data as unknown as Event[]);
         } catch (err) {
@@ -91,7 +91,7 @@ export default function HomeScreen() {
             {/* Header Banner - Fixed at top */}
             <View style={styles.header}>
                 <View style={styles.headerContent}>
-                    <Image source={require('../../assets/images/brain.png')} style={styles.headerImage} />
+                    <Image source={require('../../../assets/images/brain.png')} style={styles.headerImage} />
                     <Text style={styles.headerText}>PredictMMA</Text>
                 </View>
             </View>

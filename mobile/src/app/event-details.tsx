@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Event, Fight } from '../types';
+import { Event, Fight } from '../../types';
 
 export default function EventDetailsScreen() {
     const { eventData } = useLocalSearchParams();
