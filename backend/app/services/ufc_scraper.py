@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List
+from app.models.ufc_models import Event, Fight
 
 class UFCEventsScraper:
     def __init__(self):
@@ -11,7 +13,7 @@ class UFCEventsScraper:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
 
-    def get_event_links(self) -> list[str]:
+    def get_event_links(self) -> List[str]:
         """Scrapes the UFC events and returns the links to the events"""
         response = requests.get(self.url, headers=self.headers)
         soup = BeautifulSoup(response.text, "html.parser")
@@ -27,7 +29,7 @@ class UFCEventsScraper:
         
         return event_links[::-1]
 
-    def get_upcoming_event_links(self) -> list[str]:
+    def get_upcoming_event_links(self) -> List[str]:
         """Scrapes the event links and returns the links to the upcoming events"""
         event_links = self.get_event_links()
         current_date = datetime.now().date()
@@ -73,14 +75,13 @@ class UFCEventsScraper:
         
         return upcoming_event_links
     
-    def get_event_data(self, event_link: str) -> dict:
-        """Scrapes the event data and returns the data"""
+    def get_event_data(self, event_link: str) -> Event:
+        """Scrapes the event data and returns the data as an Event model"""
         try:
             response = requests.get(event_link, headers=self.headers)
-            response.raise_for_status()  # Raise an exception for bad status codes
+            response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
 
-            # Add null checks for all elements
             date_span = soup.find("span", string="Date/Time:")
             if not date_span:
                 raise ValueError("Date/Time span not found")
@@ -116,30 +117,27 @@ class UFCEventsScraper:
             if not location_element:
                 raise ValueError("Location not found")
 
-            event_data = {
-                "event_title": title_element.text.strip(),
-                "event_date": event_date_bst.isoformat(),
-                "event_venue": venue_element.parent.find("span", class_="text-neutral-700").text.strip(),
-                "event_location": location_element.parent.find("span", class_="text-neutral-700").text.strip(),
-                "event_location_flag": flag_src,
-                "event_fight_data": self.get_fight_data(event_link)
-            }
-
-            return event_data
+            return Event(
+                event_title=title_element.text.strip(),
+                event_date=event_date_bst,
+                event_venue=venue_element.parent.find("span", class_="text-neutral-700").text.strip(),
+                event_location=location_element.parent.find("span", class_="text-neutral-700").text.strip(),
+                event_location_flag=flag_src,
+                event_fight_data=self.get_fight_data(event_link)
+            )
         except Exception as e:
             print(f"Error scraping event data from {event_link}: {e}")
-            # Return a default structure instead of None
-            return {
-                "event_title": "Unknown Event",
-                "event_date": datetime.now().isoformat(),
-                "event_venue": "Unknown Venue",
-                "event_location": "Unknown Location",
-                "event_location_flag": None,
-                "event_fight_data": []
-            }
+            return Event(
+                event_title="Unknown Event",
+                event_date=datetime.now(),
+                event_venue="Unknown Venue",
+                event_location="Unknown Location",
+                event_location_flag='https://www.tapology.com/assets/flags/US-a475dadb4ff06978c183ce83b21741c1785beee26da55853490373f5eb2ca9b0.gif',
+                event_fight_data=[]
+            )
     
-    def get_fight_data(self, event_link: str) -> list[dict]:
-        """Scrapes the fight data and returns data for each fight and fighter"""
+    def get_fight_data(self, event_link: str) -> List[Fight]:
+        """Scrapes the fight data and returns data for each fight as a list of Fight models"""
         response = requests.get(event_link, headers=self.headers)
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -157,22 +155,22 @@ class UFCEventsScraper:
                     seen_links.add(href)
                     unique_fighter_links.append(link)
             fighter_link_elements = unique_fighter_links
-            print(fighter_link_elements)
+            
             fighter_links = [f"https://www.tapology.com{link['href']}" for link in fighter_link_elements]
             fighter_names = [link.text.strip() for link in fighter_link_elements]
             fighter_images = [img['src'] for img in container.find_all("img", class_="w-[77px] h-[77px] md:w-[104px] md:h-[104px] rounded")]
 
-            fight_data = {
-                "fighter_1_link": fighter_links[0],
-                "fighter_2_link": fighter_links[1],
-                "fighter_1_name": fighter_names[0],
-                "fighter_2_name": fighter_names[1],
-                "fighter_1_image": fighter_images[0],
-                "fighter_2_image": fighter_images[1],
-                "card_position": container.find("span", class_="text-xs11 md:text-xs10 uppercase font-bold").text.strip(),
-                "fight_weight": container.find("span", class_="bg-tap_darkgold px-1.5 md:px-1 leading-[23px] text-sm md:text-[13px] text-neutral-50 rounded").text.strip(),
-                "num_rounds": container.find("div", class_="div text-xs11").text.strip(),
-            }
+            fight_data = Fight(
+                fighter_1_link=fighter_links[0],
+                fighter_2_link=fighter_links[1],
+                fighter_1_name=fighter_names[0],
+                fighter_2_name=fighter_names[1],
+                fighter_1_image=fighter_images[0],
+                fighter_2_image=fighter_images[1],
+                card_position=container.find("span", class_="text-xs11 md:text-xs10 uppercase font-bold").text.strip(),
+                fight_weight=container.find("span", class_="bg-tap_darkgold px-1.5 md:px-1 leading-[23px] text-sm md:text-[13px] text-neutral-50 rounded").text.strip(),
+                num_rounds=container.find("div", class_="div text-xs11").text.strip(),
+            )
             fight_data_list.append(fight_data)
 
         return fight_data_list
