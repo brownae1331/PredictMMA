@@ -1,23 +1,9 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from ufc_scraper import UFCEventsScraper
+from fastapi import APIRouter
+from app.services.ufc_scraper import UFCEventsScraper
 
-app = FastAPI()
+router = APIRouter()
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/")
-def read_root():
-    return {"message": "API is running"}
-
-@app.get("/upcoming-events")
+@router.get("/upcoming-events")
 def get_upcoming_events():
     try:
         scraper = UFCEventsScraper()
@@ -38,7 +24,7 @@ def get_upcoming_events():
         print(f"Error in get_upcoming_events: {e}")
         return {"error": str(e)}
 
-@app.get("/all-upcoming-events")
+@router.get("/all-upcoming-events")
 def get_all_upcoming_events():
     try:
         scraper = UFCEventsScraper()
