@@ -17,7 +17,7 @@ export default function HomeScreen() {
     const fetchUpcomingEvents = async () => {
         try {
             console.log('Fetching upcoming events...');
-            const data = await getUpcomingEvents();
+            const data = await getUpcomingEvents(3);
             console.log('Received data:', data);
             setEvents(data as unknown as Event[]);
         } catch (err) {
