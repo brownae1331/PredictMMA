@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.services.ufc_scraper import UFCEventsScraper, Event
+from app.services.ufc_scraper import UFCScraper, Event
 from typing import Optional, List
 from fastapi import Query
 
@@ -12,7 +12,7 @@ def get_upcoming_events(limit: Optional[int] = Query(None, gt=0)) -> List[Event]
     Optional query parameter 'limit' to restrict number of events returned.
     """
     try:
-        scraper = UFCEventsScraper()
+        scraper = UFCScraper()
         upcoming_events = scraper.get_upcoming_event_links()
 
         if not upcoming_events:
