@@ -1,44 +1,33 @@
 from fastapi import APIRouter
-from app.services.ufc_scraper import UFCEventsScraper
+from app.services.ufc_scraper import UFCEventsScraper, Event
+from typing import Optional, List
+from fastapi import Query
 
 router = APIRouter()
 
-@router.get("/upcoming-events")
-def get_upcoming_events():
+@router.get("/events/upcoming")
+def get_upcoming_events(limit: Optional[int] = Query(None, gt=0)) -> List[Event]:
+    """
+    Get upcoming UFC events.
+    Optional query parameter 'limit' to restrict number of events returned.
+    """
     try:
         scraper = UFCEventsScraper()
         upcoming_events = scraper.get_upcoming_event_links()
-        
-        if not upcoming_events:
-            return []
-        
-        first_three_events = upcoming_events[:3]
-        
-        events_data = []
-        for event_link in first_three_events:
-            event_data = scraper.get_event_data(event_link)
-            events_data.append(event_data)
-        
-        return events_data
-    except Exception as e:
-        print(f"Error in get_upcoming_events: {e}")
-        return {"error": str(e)}
 
-@router.get("/all-upcoming-events")
-def get_all_upcoming_events():
-    try:
-        scraper = UFCEventsScraper()
-        upcoming_events = scraper.get_upcoming_event_links()
-        
         if not upcoming_events:
             return []
-        
+
+        if limit:
+            upcoming_events = upcoming_events[:limit]
+
         events_data = []
         for event_link in upcoming_events:
             event_data = scraper.get_event_data(event_link)
             events_data.append(event_data)
-        
+
         return events_data
+
     except Exception as e:
-        print(f"Error in get_all_upcoming_events: {e}")
+        print(f"Error in get_upcoming_events: {e}")
         return {"error": str(e)}

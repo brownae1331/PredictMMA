@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Event } from '../../types';
-import { getAllUpcomingEvents } from '../../lib/api';
+import { getUpcomingEvents } from '../../lib/api';
 
 export default function PredictScreen() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -17,7 +17,7 @@ export default function PredictScreen() {
     const fetchUpcomingEvents = async () => {
         try {
             console.log('Fetching upcoming events...');
-            const data = await getAllUpcomingEvents();
+            const data = await getUpcomingEvents();
             console.log('Received data:', data);
             setEvents(data as unknown as Event[]);
         } catch (err) {
