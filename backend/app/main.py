@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.core.config import add_cors
 from app.api.ufc_routes import router
+from app.services.ufc_scraper import UFCScraper
 
 app = FastAPI()
 
@@ -10,4 +11,7 @@ app.include_router(router, prefix="/ufc", tags=["UFC"])
 
 @app.get("/")
 def read_root():
+    ufc_scraper = UFCScraper()
+    event_links = ufc_scraper.get_upcoming_event_links()
+    print(event_links)
     return {"message": "API is running"}
