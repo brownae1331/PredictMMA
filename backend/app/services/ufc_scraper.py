@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
-from app.models.ufc_models import MainEvent, EventSummary
+from app.models.ufc_models import MainEvent, EventSummary, Fight
 import time
 
 class UFCScraper:
@@ -79,7 +79,7 @@ class UFCScraper:
     def get_main_event_data(self, soup: BeautifulSoup) -> MainEvent | None:
         """
         Scrapes the fight data for the main event of a UFC event.
-        returns a MainEvent model or None if the main event is not found.
+        Returns a MainEvent model or None if the main event is not found.
         """
         fight_container = soup.find("li", class_="l-listing__item")
         if not fight_container:
@@ -122,7 +122,7 @@ class UFCScraper:
     def get_event_summary_data(self, event_link: str) -> EventSummary:
         """
         Scrapes the event data for the main event of a UFC event.
-        returns an EventSummary model.
+        Returns an EventSummary model.
         """
         response = requests.get(event_link, headers=self.headers)
         soup = BeautifulSoup(response.text, "html.parser")
@@ -151,6 +151,70 @@ class UFCScraper:
             main_event=main_event
         )
         return event_summary
+    
+    def get_fight_data(self, event_link: str) -> List[Fight] | None:
+        """
+        Scrapes the fight data of a UFC event.
+        Returns a list of Fight models.
+        """
+        response = requests.get(event_link, headers=self.headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        fight_containers = soup.find_all("div", class_="c-listing-fight")
+        if not fight_containers:
+            return None
+        
+        fight_data_list = []
+        
+        for container in fight_containers:
+            fighter_1_link_element = container.find("div", class_="c-listing-fight__corner-name c-listing-fight__corner-name--red")
+            fighter_1_link = fighter_1_link_element.find("a").get("href")
+            fighter_1_name = self._extract_fighter_name(fighter_1_link_element)
+            
+            fighter_2_link_element = container.find("div", class_="c-listing-fight__corner-name c-listing-fight__corner-name--blue")
+            fighter_2_link = fighter_2_link_element.find("a").get("href")
+            fighter_2_name = self._extract_fighter_name(fighter_2_link_element)
+            
+            fighter_images = container.find_all("img", class_="image-style-event-fight-card-upper-body-of-standing-athlete")
+            fighter_1_image = fighter_images[0].get("src")
+            fighter_2_image = fighter_images[1].get("src")
+            
+            ranks_row = container.find("div", class_="c-listing-fight__ranks-row")
+            fighter_1_rank = ""
+            fighter_2_rank = ""
+            if ranks_row:
+                rank_divs = ranks_row.find_all("div", class_="js-listing-fight__corner-rank")
+                if len(rank_divs) >= 2:
+                    fighter_1_rank = rank_divs[0].text.strip()
+                    fighter_2_rank = rank_divs[1].text.strip()
+
+            odds_row = container.find("div", class_="c-listing-fight__odds-row")
+
+            red_country_div = odds_row.find("div", class_="c-listing-fight__country c-listing-fight__country--red")
+            fighter_1_flag = red_country_div.find("img")["src"] if red_country_div.find("img") else ""
+
+            blue_country_div = odds_row.find("div", class_="c-listing-fight__country c-listing-fight__country--blue")
+            fighter_2_flag = blue_country_div.find("img")["src"] if blue_country_div.find("img") else ""
+
+            fight_weight = container.find("div", class_="c-listing-fight__class-text").text.strip()
+
+            fight_data = Fight(
+                fighter_1_link=fighter_1_link,
+                fighter_2_link=fighter_2_link,
+                fighter_1_name=fighter_1_name,
+                fighter_2_name=fighter_2_name,
+                fighter_1_image=fighter_1_image,
+                fighter_2_image=fighter_2_image,
+                fighter_1_rank=fighter_1_rank,
+                fighter_2_rank=fighter_2_rank,
+                fighter_1_flag=fighter_1_flag,
+                fighter_2_flag=fighter_2_flag,
+                fight_weight=fight_weight
+            )
+            fight_data_list.append(fight_data)
+
+        return fight_data_list
+            
 
 # class UFCEventsScraper:
 #     def __init__(self):

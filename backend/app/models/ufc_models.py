@@ -25,9 +25,11 @@ class Fight(BaseModel):
     fighter_2_name: str
     fighter_1_image: str
     fighter_2_image: str
-    card_position: str
+    fighter_1_rank: str
+    fighter_2_rank: str
+    fighter_1_flag: str
+    fighter_2_flag: str
     fight_weight: str
-    num_rounds: str
 
 class Event(BaseModel):
     event_url: str
@@ -36,4 +38,4 @@ class Event(BaseModel):
     event_venue: str
     event_location: str
     event_location_flag: str
-    event_fight_data: List[Fight]
+    event_fight_data: List[Fight] | None
