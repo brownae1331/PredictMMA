@@ -14,6 +14,6 @@ def read_root():
     ufc_scraper = UFCScraper()
     event_links = ufc_scraper.get_upcoming_event_links()
     for event_link in event_links:
-        fight_data = ufc_scraper.get_fight_data(event_link)
-        print(fight_data)
+        event_data = ufc_scraper.get_event_data(event_link)
+        print(event_data)
     return {"message": "API is running"}
