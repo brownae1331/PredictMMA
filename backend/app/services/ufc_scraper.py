@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
-from app.models.ufc_models import Event, Fight
+from app.models.ufc_models import MainEvent
 import time
 
 class UFCScraper:
@@ -61,6 +61,64 @@ class UFCScraper:
             page += 1
 
         return event_links
+    
+    def _extract_fighter_name(self, link_element: BeautifulSoup) -> str:
+        """
+        Extracts the fighter's name from the link element. Handles cases where the name is in <span> tags or as direct text in <a> tag.
+        """
+        given_name_span = link_element.find("span", class_="c-listing-fight__corner-given-name")
+        family_name_span = link_element.find("span", class_="c-listing-fight__corner-family-name")
+        if given_name_span and family_name_span:
+            return f"{given_name_span.text.strip()} {family_name_span.text.strip()}"
+        a_tag = link_element.find("a")
+        if a_tag:
+            return a_tag.get_text(strip=True)
+        return ""
+
+    def get_main_event_data(self, event_link: str) -> MainEvent:
+        """
+        Scrapes the fight data for the main event of a UFC event.
+        returns a MainEvent model.
+        """
+        response = requests.get(event_link, headers=self.headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        fight_container = soup.find("li", class_="l-listing__item")
+
+        fighter_1_link_element = fight_container.find("div", class_="c-listing-fight__corner-name c-listing-fight__corner-name--red")
+        fighter_1_link = fighter_1_link_element.find("a").get("href")
+        fighter_1_name = self._extract_fighter_name(fighter_1_link_element)
+
+        fighter_2_link_element = fight_container.find("div", class_="c-listing-fight__corner-name c-listing-fight__corner-name--blue")
+        fighter_2_link = fighter_2_link_element.find("a").get("href")
+        fighter_2_name = self._extract_fighter_name(fighter_2_link_element)
+
+        fighter_images = fight_container.find_all("img", class_="image-style-event-fight-card-upper-body-of-standing-athlete")
+        fighter_1_image = fighter_images[0].get("src")
+        fighter_2_image = fighter_images[1].get("src")
+
+        ranks_row = fight_container.find("div", class_="c-listing-fight__ranks-row")
+        fighter_1_rank = ""
+        fighter_2_rank = ""
+        if ranks_row:
+            rank_divs = ranks_row.find_all("div", class_="js-listing-fight__corner-rank")
+            if len(rank_divs) >= 2:
+                fighter_1_rank = rank_divs[0].text.strip()
+                fighter_2_rank = rank_divs[1].text.strip()
+
+        main_event = MainEvent(
+            fighter_1_link=fighter_1_link,
+            fighter_2_link=fighter_2_link,
+            fighter_1_name=fighter_1_name,
+            fighter_2_name=fighter_2_name,
+            fighter_1_image=fighter_1_image,
+            fighter_2_image=fighter_2_image,
+            fighter_1_rank=fighter_1_rank,
+            fighter_2_rank=fighter_2_rank
+        )
+
+        return main_event
+        
 
 # class UFCEventsScraper:
 #     def __init__(self):
@@ -68,6 +126,45 @@ class UFCScraper:
 #         self.headers = {
 #             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 #         }
+
+#     def get_fight_data(self, event_link: str) -> List[Fight]:
+#         """Scrapes the fight data and returns data for each fight as a list of Fight models"""
+#         response = requests.get(event_link, headers=self.headers)
+#         soup = BeautifulSoup(response.text, "html.parser")
+
+#         fight_data_list = []
+#         fight_containers = soup.find_all("div", class_="div flex flex-col mt-3 mb-4 md:mt-2.5 md:mb-2.5 w-full fullsize")
+
+#         for container in fight_containers:
+#             fighter_link_elements = container.find_all("a", class_="link-primary-red")
+            
+#             seen_links = set()
+#             unique_fighter_links = []
+#             for link in fighter_link_elements:
+#                 href = link.get('href')
+#                 if href and href not in seen_links:
+#                     seen_links.add(href)
+#                     unique_fighter_links.append(link)
+#             fighter_link_elements = unique_fighter_links
+            
+#             fighter_links = [f"https://www.tapology.com{link['href']}" for link in fighter_link_elements]
+#             fighter_names = [link.text.strip() for link in fighter_link_elements]
+#             fighter_images = [img['src'] for img in container.find_all("img", class_="w-[77px] h-[77px] md:w-[104px] md:h-[104px] rounded")]
+
+#             fight_data = Fight(
+#                 fighter_1_link=fighter_links[0],
+#                 fighter_2_link=fighter_links[1],
+#                 fighter_1_name=fighter_names[0],
+#                 fighter_2_name=fighter_names[1],
+#                 fighter_1_image=fighter_images[0],
+#                 fighter_2_image=fighter_images[1],
+#                 card_position=container.find("span", class_="text-xs11 md:text-xs10 uppercase font-bold").text.strip(),
+#                 fight_weight=container.find("span", class_="bg-tap_darkgold px-1.5 md:px-1 leading-[23px] text-sm md:text-[13px] text-neutral-50 rounded").text.strip(),
+#                 num_rounds=container.find("div", class_="div text-xs11").text.strip(),
+#             )
+#             fight_data_list.append(fight_data)
+
+#         return fight_data_list
 
 #     def get_event_links(self) -> List[str]:
 #         """Scrapes the UFC events and returns the links to the events"""
@@ -191,42 +288,3 @@ class UFCScraper:
 #                 event_location_flag='https://www.tapology.com/assets/flags/US-a475dadb4ff06978c183ce83b21741c1785beee26da55853490373f5eb2ca9b0.gif',
 #                 event_fight_data=[]
 #             )
-    
-#     def get_fight_data(self, event_link: str) -> List[Fight]:
-#         """Scrapes the fight data and returns data for each fight as a list of Fight models"""
-#         response = requests.get(event_link, headers=self.headers)
-#         soup = BeautifulSoup(response.text, "html.parser")
-
-#         fight_data_list = []
-#         fight_containers = soup.find_all("div", class_="div flex flex-col mt-3 mb-4 md:mt-2.5 md:mb-2.5 w-full fullsize")
-
-#         for container in fight_containers:
-#             fighter_link_elements = container.find_all("a", class_="link-primary-red")
-            
-#             seen_links = set()
-#             unique_fighter_links = []
-#             for link in fighter_link_elements:
-#                 href = link.get('href')
-#                 if href and href not in seen_links:
-#                     seen_links.add(href)
-#                     unique_fighter_links.append(link)
-#             fighter_link_elements = unique_fighter_links
-            
-#             fighter_links = [f"https://www.tapology.com{link['href']}" for link in fighter_link_elements]
-#             fighter_names = [link.text.strip() for link in fighter_link_elements]
-#             fighter_images = [img['src'] for img in container.find_all("img", class_="w-[77px] h-[77px] md:w-[104px] md:h-[104px] rounded")]
-
-#             fight_data = Fight(
-#                 fighter_1_link=fighter_links[0],
-#                 fighter_2_link=fighter_links[1],
-#                 fighter_1_name=fighter_names[0],
-#                 fighter_2_name=fighter_names[1],
-#                 fighter_1_image=fighter_images[0],
-#                 fighter_2_image=fighter_images[1],
-#                 card_position=container.find("span", class_="text-xs11 md:text-xs10 uppercase font-bold").text.strip(),
-#                 fight_weight=container.find("span", class_="bg-tap_darkgold px-1.5 md:px-1 leading-[23px] text-sm md:text-[13px] text-neutral-50 rounded").text.strip(),
-#                 num_rounds=container.find("div", class_="div text-xs11").text.strip(),
-#             )
-#             fight_data_list.append(fight_data)
-
-#         return fight_data_list

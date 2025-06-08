@@ -1,7 +1,8 @@
 from fastapi import APIRouter
-from app.services.ufc_scraper import UFCScraper, Event
+from app.services.ufc_scraper import UFCScraper
 from typing import Optional, List
 from fastapi import Query
+from app.models.ufc_models import Event
 
 router = APIRouter()
 
