@@ -16,7 +16,7 @@ class EventSummary(BaseModel):
     event_url: str
     event_title: str
     event_date: datetime
-    main_event: MainEvent
+    main_event: MainEvent | None
 
 class Fight(BaseModel):
     fighter_1_link: str

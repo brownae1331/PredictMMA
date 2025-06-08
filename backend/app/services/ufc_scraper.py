@@ -1,10 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
-from app.models.ufc_models import MainEvent
+from app.models.ufc_models import MainEvent, EventSummary
 import time
 
 class UFCScraper:
@@ -64,7 +64,8 @@ class UFCScraper:
     
     def _extract_fighter_name(self, link_element: BeautifulSoup) -> str:
         """
-        Extracts the fighter's name from the link element. Handles cases where the name is in <span> tags or as direct text in <a> tag.
+        Extracts the fighter's name from the link element.
+        Handles cases where the name is in <span> tags or as direct text in <a> tag.
         """
         given_name_span = link_element.find("span", class_="c-listing-fight__corner-given-name")
         family_name_span = link_element.find("span", class_="c-listing-fight__corner-family-name")
@@ -75,15 +76,14 @@ class UFCScraper:
             return a_tag.get_text(strip=True)
         return ""
 
-    def get_main_event_data(self, event_link: str) -> MainEvent:
+    def get_main_event_data(self, soup: BeautifulSoup) -> MainEvent | None:
         """
         Scrapes the fight data for the main event of a UFC event.
-        returns a MainEvent model.
+        returns a MainEvent model or None if the main event is not found.
         """
-        response = requests.get(event_link, headers=self.headers)
-        soup = BeautifulSoup(response.text, "html.parser")
-
         fight_container = soup.find("li", class_="l-listing__item")
+        if not fight_container:
+            return None
 
         fighter_1_link_element = fight_container.find("div", class_="c-listing-fight__corner-name c-listing-fight__corner-name--red")
         fighter_1_link = fighter_1_link_element.find("a").get("href")
@@ -102,7 +102,7 @@ class UFCScraper:
         fighter_2_rank = ""
         if ranks_row:
             rank_divs = ranks_row.find_all("div", class_="js-listing-fight__corner-rank")
-            if len(rank_divs) >= 2:
+            if len(rank_divs) >= 2:     
                 fighter_1_rank = rank_divs[0].text.strip()
                 fighter_2_rank = rank_divs[1].text.strip()
 
@@ -119,6 +119,38 @@ class UFCScraper:
 
         return main_event
         
+    def get_event_summary_data(self, event_link: str) -> EventSummary:
+        """
+        Scrapes the event data for the main event of a UFC event.
+        returns an EventSummary model.
+        """
+        response = requests.get(event_link, headers=self.headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        event_title = soup.find("div", class_="field field--name-node-title field--type-ds field--label-hidden field__item").text.strip()
+
+        timestamp = None
+        time_divs = soup.find_all("div", class_="c-event-fight-card-broadcaster__time tz-change-inner")
+        if time_divs:
+            timestamp = time_divs[-1].get("data-timestamp")
+        if not timestamp:
+            fallback_div = soup.find("div", class_="c-hero__headline-suffix tz-change-inner")
+            timestamp = fallback_div.get("data-timestamp")
+        if timestamp:
+            event_date_utc = datetime.fromtimestamp(int(timestamp.strip()), tz=ZoneInfo("UTC"))
+            event_date_bst = event_date_utc.astimezone(ZoneInfo("Europe/London"))
+            if not time_divs:
+                event_date_bst = event_date_bst.date()
+
+        main_event = self.get_main_event_data(soup)
+
+        event_summary = EventSummary(
+            event_url=event_link,
+            event_title=event_title,
+            event_date=event_date_bst,
+            main_event=main_event
+        )
+        return event_summary
 
 # class UFCEventsScraper:
 #     def __init__(self):
