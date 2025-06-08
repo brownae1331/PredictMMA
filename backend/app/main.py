@@ -13,6 +13,7 @@ app.include_router(router, prefix="/ufc", tags=["UFC"])
 def read_root():
     ufc_scraper = UFCScraper()
     event_links = ufc_scraper.get_upcoming_event_links()
-    event_summary_data = ufc_scraper.get_event_summary_data(event_links[13])
-    print(event_summary_data)
+    for event_link in event_links:
+        fight_data = ufc_scraper.get_fight_data(event_link)
+        print(fight_data)
     return {"message": "API is running"}
