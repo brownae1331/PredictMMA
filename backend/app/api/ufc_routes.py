@@ -1,10 +1,24 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from app.services.ufc_scraper import UFCScraper
-from app.models.ufc_models import Event, EventSummary
+from app.models.ufc_models import Event, EventSummary, Fight, MainEvent
 from typing import List
+import traceback
 
 router = APIRouter()
+scraper = UFCScraper()
+
+@router.get("/events/links/upcoming")
+def get_upcoming_events_links() -> List[str]:
+    """
+    Get upcoming UFC events links.
+    """
+    try:
+        upcoming_events = scraper.get_upcoming_event_links()
+        return upcoming_events
+    except Exception as e:
+        print(f"Error in get_upcoming_events_links: {e}")
+        return {"error": str(e)}
 
 @router.get("/event/")
 def get_event(event_url: str) -> Event:
@@ -12,11 +26,11 @@ def get_event(event_url: str) -> Event:
     Get a UFC event.
     """
     try:
-        scraper = UFCScraper()
         event = scraper.get_event_data(event_url)
         return event
     except Exception as e:
-        print(f"Error in get_event: {e}")
+        print(f"Error in get_event: {e}")#
+        traceback.print_exc()
         return {"error": str(e)}
 
 @router.get("/event/summary")
@@ -26,22 +40,32 @@ def get_event_summary(event_url: str) -> EventSummary:
     """
     try:
         print("event_url", event_url)
-        scraper = UFCScraper()
         event_summary = scraper.get_event_summary_data(event_url)
         return event_summary
     except Exception as e:
         print(f"Error in get_event_summary: {e}")
         return {"error": str(e)}
     
-@router.get("/events/links/upcoming")
-def get_upcoming_events_links() -> List[str]:
+@router.get("/event/fights")
+def get_event_fights(event_url: str) -> List[Fight]:
     """
-    Get upcoming UFC events links.
+    Get the fights of a UFC event.
     """
     try:
-        scraper = UFCScraper()
-        upcoming_events = scraper.get_upcoming_event_links()
-        return upcoming_events
+        fights = scraper.get_fight_data(event_url)
+        return fights
     except Exception as e:
-        print(f"Error in get_upcoming_events_links: {e}")
+        print(f"Error in get_event_fights: {e}")
+        return {"error": str(e)}
+    
+@router.get("/event/main-event")
+def get_event_main_event(event_url: str) -> MainEvent:
+    """
+    Get the main event of a UFC event.
+    """
+    try:
+        main_event = scraper.get_main_event_data(event_url)
+        return main_event
+    except Exception as e:
+        print(f"Error in get_event_main_event: {e}")
         return {"error": str(e)}

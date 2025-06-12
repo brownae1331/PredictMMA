@@ -3,6 +3,7 @@ from typing import List
 from pydantic import BaseModel
 
 class MainEvent(BaseModel):
+    event_url: str
     fighter_1_link: str
     fighter_2_link: str
     fighter_1_name: str
@@ -16,9 +17,9 @@ class EventSummary(BaseModel):
     event_url: str
     event_title: str
     event_date: datetime
-    main_event: MainEvent | None
 
 class Fight(BaseModel):
+    event_url: str
     fighter_1_link: str
     fighter_2_link: str
     fighter_1_name: str
@@ -38,4 +39,3 @@ class Event(BaseModel):
     event_venue: str
     event_location: str
     event_location_flag: str
-    event_fight_data: List[Fight] | None

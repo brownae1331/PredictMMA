@@ -1,4 +1,5 @@
 export interface MainEvent {
+    event_url: string;
     fighter_1_link: string;
     fighter_2_link: string;
     fighter_1_name: string;
@@ -13,10 +14,10 @@ export interface EventSummary {
     event_url: string;
     event_title: string;
     event_date: string;
-    main_event: MainEvent | null;
 }
 
 export interface Fight {
+    event_url: string;
     fighter_1_link: string;
     fighter_2_link: string;
     fighter_1_name: string;
@@ -37,5 +38,4 @@ export interface Event {
     event_venue: string;
     event_location: string;
     event_location_flag: string;
-    event_fight_data: Fight[] | null;
 }

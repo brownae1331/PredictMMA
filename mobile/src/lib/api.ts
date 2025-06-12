@@ -1,6 +1,6 @@
 import { API_CONFIG } from './config';
 import { handleResponse } from './apiUtils';
-import { Event, EventSummary } from '../types/ufc_types';
+import { Event, EventSummary, Fight, MainEvent } from '../types/ufc_types';
 
 export async function getUpcomingEventLinks(): Promise<string[]> {
     try {
@@ -40,9 +40,7 @@ export async function getEventSummaries(limit?: number): Promise<EventSummary[]>
         const event_summaries: EventSummary[] = [];
 
         for (const link of limited_links) {
-            const encoded_link = encodeURIComponent(link);
-            console.log("encoded_link", encoded_link);
-            const url = new URL(`${API_CONFIG.BASE_URL}/ufc/event/summary?event_url=${encoded_link}`);
+            const url = new URL(`${API_CONFIG.BASE_URL}/ufc/event/summary?event_url=${link}`);
             const response = await fetch(url);
             const event_summary = await handleResponse<EventSummary>(response);
             event_summaries.push(event_summary);
@@ -51,6 +49,28 @@ export async function getEventSummaries(limit?: number): Promise<EventSummary[]>
         return event_summaries;
     } catch (error) {
         console.error('Error fetching event summaries:', error);
+        throw error;
+    }
+}
+
+export async function getEventFights(event_url: string): Promise<Fight[]> {
+    try {
+        const url = new URL(`${API_CONFIG.BASE_URL}/ufc/event/fights?event_url=${event_url}`);
+        const response = await fetch(url);
+        return handleResponse<Fight[]>(response);
+    } catch (error) {
+        console.error('Error fetching event fights:', error);
+        throw error;
+    }
+}
+
+export async function getEventMainEvent(event_url: string): Promise<MainEvent> {
+    try {
+        const url = new URL(`${API_CONFIG.BASE_URL}/ufc/event/main-event?event_url=${event_url}`);
+        const response = await fetch(url);
+        return handleResponse<MainEvent>(response);
+    } catch (error) {
+        console.error('Error fetching event main event:', error);
         throw error;
     }
 }
