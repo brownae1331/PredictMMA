@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Event } from '../../types';
+import { Event } from '../../types/ufc_types';
 import { getUpcomingEvents } from '../../lib/api';
 
 export default function PredictScreen() {

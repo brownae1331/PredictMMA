@@ -2,24 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Event, Fight } from '../../types';
-import { getUpcomingEvents } from '../../lib/api';
+import { EventSummary, MainEvent } from '../../types/ufc_types';
+import { getEventSummaries } from '../../lib/api';
 
 export default function HomeScreen() {
-    const [events, setEvents] = useState<Event[]>([]);
+    const [events, setEvents] = useState<EventSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchUpcomingEvents();
+        fetchEventSummaries();
     }, []);
 
-    const fetchUpcomingEvents = async () => {
+    const fetchEventSummaries = async () => {
         try {
-            console.log('Fetching upcoming events...');
-            const data = await getUpcomingEvents(3);
+            console.log('Fetching upcoming event summaries...');
+            const data = await getEventSummaries(3);
             console.log('Received data:', data);
-            setEvents(data as unknown as Event[]);
+            setEvents(data as EventSummary[]);
         } catch (err) {
             console.error('Fetch error:', err);
             setError(err instanceof Error ? err.message : 'An error occurred');
@@ -28,16 +28,17 @@ export default function HomeScreen() {
         }
     };
 
-    const handleEventPress = (event: Event) => {
-        router.push({
-            pathname: '/event-details',
-            params: {
-                eventData: JSON.stringify(event)
-            }
-        });
-    };
+    // const handleEventPress = (event: EventSummary) => {
+    //     router.push({
+    //         pathname: '/event-details',
+    //         params: {
+    //             eventData: JSON.stringify(event)
+    //         }
+    //     });
+    // };
 
-    const renderFightCard = (fight: Fight, index: number) => {
+    const renderMainEventCard = (main_event: MainEvent | null) => {
+        if (!main_event) return null;
         const formatFighterName = (fullName: string) => {
             const nameParts = fullName.trim().split(' ');
             if (nameParts.length === 1) {
@@ -47,19 +48,20 @@ export default function HomeScreen() {
             const lastName = nameParts.slice(1).join(' ');
             return { firstName, lastName };
         };
-
-        const fighter1Name = formatFighterName(fight.fighter_1_name);
-        const fighter2Name = formatFighterName(fight.fighter_2_name);
-
+        const fighter1Name = formatFighterName(main_event.fighter_1_name);
+        const fighter2Name = formatFighterName(main_event.fighter_2_name);
         return (
-            <View key={index} style={styles.fightCard}>
+            <View style={styles.fightCard}>
                 <View style={styles.fightersContainer}>
                     <View style={styles.fighter}>
-                        <Image
-                            source={{ uri: fight.fighter_1_image }}
-                            style={styles.fighterImage}
-                            contentFit="cover"
-                        />
+                        <View style={styles.fighterImageContainer}>
+                            <Image
+                                source={{ uri: main_event.fighter_1_image }}
+                                style={styles.fighterImage}
+                                contentFit="cover"
+                                contentPosition="top"
+                            />
+                        </View>
                         <View style={styles.fighterNameContainer}>
                             <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
                             {fighter1Name.lastName !== '' && (
@@ -69,11 +71,14 @@ export default function HomeScreen() {
                     </View>
                     <Text style={styles.vsText}>VS</Text>
                     <View style={styles.fighter}>
-                        <Image
-                            source={{ uri: fight.fighter_2_image }}
-                            style={styles.fighterImage}
-                            contentFit="cover"
-                        />
+                        <View style={styles.fighterImageContainer}>
+                            <Image
+                                source={{ uri: main_event.fighter_2_image }}
+                                style={styles.fighterImage}
+                                contentFit="cover"
+                                contentPosition="top"
+                            />
+                        </View>
                         <View style={styles.fighterNameContainer}>
                             <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
                             {fighter2Name.lastName !== '' && (
@@ -111,7 +116,7 @@ export default function HomeScreen() {
                         events.map((event, eventIndex) => (
                             <TouchableOpacity
                                 key={eventIndex}
-                                onPress={() => handleEventPress(event)}
+                                // onPress={() => handleEventPress(event)}
                                 activeOpacity={0.7}
                             >
                                 <View style={styles.eventContainer}>
@@ -121,11 +126,8 @@ export default function HomeScreen() {
                                     <Text style={styles.eventDate}>
                                         {new Date(event.event_date).toLocaleDateString()} at {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </Text>
-
-                                    {/* Show only the first fight */}
-                                    {event.event_fight_data.length > 0 &&
-                                        renderFightCard(event.event_fight_data[0], 0)
-                                    }
+                                    {/* Show only the main event */}
+                                    {renderMainEventCard(event.main_event)}
                                 </View>
                             </TouchableOpacity>
                         ))
@@ -236,12 +238,20 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
     },
-    fighterImage: {
+    fighterImageContainer: {
         width: 150,
         height: 150,
         borderRadius: 12,
+        overflow: 'hidden',
         marginBottom: 12,
     },
+    fighterImage: {
+        width: 150,
+        height: 150,
+        marginTop: 0,
+        resizeMode: 'cover',
+    },
+
     fighterNameContainer: {
         alignItems: 'center',
         minHeight: 40,
