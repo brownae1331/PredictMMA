@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Event } from '../../types';
-import { getUpcomingEvents } from '../../lib/api';
+import { Event } from '../../types/ufc_types';
+import { getEvents } from '../../lib/api';
 
 export default function PredictScreen() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -17,7 +17,7 @@ export default function PredictScreen() {
     const fetchUpcomingEvents = async () => {
         try {
             console.log('Fetching upcoming events...');
-            const data = await getUpcomingEvents();
+            const data = await getEvents();
             console.log('Received data:', data);
             setEvents(data as unknown as Event[]);
         } catch (err) {
