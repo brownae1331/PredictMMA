@@ -3,39 +3,56 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { EventSummary, MainEvent } from '../../types/ufc_types';
-import { getEventSummaries } from '../../lib/api';
+import { getEventSummaries, getEventMainEvent } from '../../lib/api';
+
+// Define a new type for the combined data
+interface EventWithMainEvent {
+    summary: EventSummary;
+    mainEvent: MainEvent | null;
+}
 
 export default function HomeScreen() {
-    const [events, setEvents] = useState<EventSummary[]>([]);
+    const [events, setEvents] = useState<EventWithMainEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchEventSummaries();
+        fetchEventsWithMainEvents();
     }, []);
 
-    const fetchEventSummaries = async () => {
+    const fetchEventsWithMainEvents = async () => {
         try {
-            console.log('Fetching upcoming event summaries...');
-            const data = await getEventSummaries(3);
-            console.log('Received data:', data);
-            setEvents(data as EventSummary[]);
+            setLoading(true);
+            setError(null);
+            const summaries = await getEventSummaries(3);
+            // Fetch main event for each summary
+            const eventsWithMain = await Promise.all(
+                summaries.map(async (summary) => {
+                    try {
+                        const mainEvent = await getEventMainEvent(summary.event_url);
+                        return { summary, mainEvent };
+                    } catch (e) {
+                        // If main event fetch fails, just set it as null
+                        return { summary, mainEvent: null };
+                    }
+                })
+            );
+            setEvents(eventsWithMain);
         } catch (err) {
-            console.error('Fetch error:', err);
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
             setLoading(false);
         }
     };
 
-    // const handleEventPress = (event: EventSummary) => {
-    //     router.push({
-    //         pathname: '/event-details',
-    //         params: {
-    //             eventData: JSON.stringify(event)
-    //         }
-    //     });
-    // };
+    const handleEventPress = (event: EventSummary) => {
+        router.push({
+            pathname: '/event-details',
+            params: {
+                eventData: JSON.stringify(event)
+            }
+        });
+    };
 
     const renderMainEventCard = (main_event: MainEvent | null) => {
         if (!main_event) return null;
@@ -113,21 +130,21 @@ export default function HomeScreen() {
                     ) : events.length === 0 ? (
                         <Text style={styles.noEventsText}>No upcoming events found</Text>
                     ) : (
-                        events.map((event, eventIndex) => (
+                        events.map(({ summary, mainEvent }, eventIndex) => (
                             <TouchableOpacity
                                 key={eventIndex}
-                                // onPress={() => handleEventPress(event)}
+                                onPress={() => handleEventPress(summary)}
                                 activeOpacity={0.7}
                             >
                                 <View style={styles.eventContainer}>
                                     <Text style={styles.eventTitle} numberOfLines={1}>
-                                        {event.event_title.split(':')[0]}
+                                        {summary.event_title.split(':')[0]}
                                     </Text>
                                     <Text style={styles.eventDate}>
-                                        {new Date(event.event_date).toLocaleDateString()} at {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(summary.event_date).toLocaleDateString()} at {new Date(summary.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </Text>
                                     {/* Show only the main event */}
-                                    {renderMainEventCard(event.main_event)}
+                                    {renderMainEventCard(mainEvent)}
                                 </View>
                             </TouchableOpacity>
                         ))

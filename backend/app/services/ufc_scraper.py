@@ -88,11 +88,14 @@ class UFCScraper:
             return f"https://flagcdn.com/w320/{country_code.lower()}.png"
         return ""
 
-    def get_main_event_data(self, soup: BeautifulSoup) -> MainEvent | None:
+    def get_main_event_data(self, event_link: str) -> MainEvent:
         """
         Scrapes the fight data for the main event of a UFC event.
-        Returns a MainEvent model or None if the main event is not found.
+        Returns a MainEvent model.
         """
+        response = requests.get(event_link, headers=self.headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+
         fight_container = soup.find("li", class_="l-listing__item")
         if not fight_container:
             return None
@@ -119,6 +122,7 @@ class UFCScraper:
                 fighter_2_rank = rank_divs[1].text.strip()
 
         main_event = MainEvent(
+            event_url=event_link,
             fighter_1_link=fighter_1_link,
             fighter_2_link=fighter_2_link,
             fighter_1_name=fighter_1_name,
@@ -154,21 +158,21 @@ class UFCScraper:
             if not time_divs:
                 event_date_bst = event_date_bst.date()
 
-        main_event = self.get_main_event_data(soup)
-
         event_summary = EventSummary(
             event_url=event_link,
             event_title=event_title,
             event_date=event_date_bst,
-            main_event=main_event
         )
         return event_summary
     
-    def get_fight_data(self, soup: BeautifulSoup) -> List[Fight] | None:
+    def get_fight_data(self, event_link: str) -> List[Fight]:
         """
         Scrapes the fight data of a UFC event.
         Returns a list of Fight models.
         """
+        response = requests.get(event_link, headers=self.headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+
         fight_containers = soup.find_all("div", class_="c-listing-fight")
         if not fight_containers:
             return None
@@ -208,6 +212,7 @@ class UFCScraper:
             fight_weight = container.find("div", class_="c-listing-fight__class-text").text.strip()
 
             fight_data = Fight(
+                event_url=event_link,
                 fighter_1_link=fighter_1_link,
                 fighter_2_link=fighter_2_link,
                 fighter_1_name=fighter_1_name,
@@ -256,8 +261,6 @@ class UFCScraper:
 
         event_location_flag = self._get_flag_image_url(event_location)
 
-        event_fight_data = self.get_fight_data(soup)
-
         event_data = Event(
             event_url=event_link,
             event_title=event_title,
@@ -265,7 +268,6 @@ class UFCScraper:
             event_venue=event_venue,
             event_location=event_location,
             event_location_flag=event_location_flag,
-            event_fight_data=event_fight_data
         )
 
         return event_data
