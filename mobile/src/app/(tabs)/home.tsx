@@ -84,6 +84,11 @@ export default function HomeScreen() {
                             {fighter1Name.lastName !== '' && (
                                 <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
                             )}
+                            {main_event.fighter_1_rank && (
+                                <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                                    {main_event.fighter_1_rank}
+                                </Text>
+                            )}
                         </View>
                     </View>
                     <Text style={styles.vsText}>VS</Text>
@@ -100,6 +105,11 @@ export default function HomeScreen() {
                             <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
                             {fighter2Name.lastName !== '' && (
                                 <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
+                            )}
+                            {main_event.fighter_2_rank && (
+                                <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                                    {main_event.fighter_2_rank}
+                                </Text>
                             )}
                         </View>
                     </View>

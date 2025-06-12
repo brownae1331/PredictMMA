@@ -45,39 +45,70 @@ export default function EventDetailsScreen() {
         return (
             <View key={index} style={styles.fightCard}>
                 <View style={styles.fightHeader}>
-                    <View style={styles.centerSection}>
-                        <Text style={styles.fightWeight}>{fight.fight_weight}</Text>
-                    </View>
+                    <Text style={styles.fightWeight}>{fight.fight_weight}</Text>
                 </View>
                 <View style={styles.fightersContainer}>
-                    <View style={styles.fighter}>
+                    {/* Fighter 1 */}
+                    <View style={styles.fighterSection}>
                         <Image
                             source={{ uri: fight.fighter_1_image }}
                             style={styles.fighterImage}
                             contentFit="cover"
                             contentPosition="top"
                         />
-                        <View style={styles.fighterNameContainer}>
-                            <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
-                            {fighter1Name.lastName !== '' && (
-                                <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
-                            )}
+                        <View style={styles.fighterInfoRow}>
+                            {fight.fighter_1_flag ? (
+                                <Image
+                                    source={{ uri: fight.fighter_1_flag }}
+                                    style={styles.flagImage}
+                                    contentFit="cover"
+                                    resizeMode="cover"
+                                />
+                            ) : null}
+                            <View style={styles.fighterNameContainer}>
+                                <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
+                                {fighter1Name.lastName !== '' && (
+                                    <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
+                                )}
+                            </View>
                         </View>
+                        {fight.fighter_1_rank && (
+                            <Text style={styles.fighterRank}>{fight.fighter_1_rank}</Text>
+                        )}
                     </View>
-                    <Text style={styles.vsText}>VS</Text>
-                    <View style={styles.fighter}>
+
+                    {/* VS */}
+                    <View style={styles.vsContainer}>
+                        <Text style={styles.vsText}>VS</Text>
+                    </View>
+
+                    {/* Fighter 2 */}
+                    <View style={styles.fighterSection}>
                         <Image
                             source={{ uri: fight.fighter_2_image }}
                             style={styles.fighterImage}
                             contentFit="cover"
                             contentPosition="top"
                         />
-                        <View style={styles.fighterNameContainer}>
-                            <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
-                            {fighter2Name.lastName !== '' && (
-                                <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
-                            )}
+                        <View style={styles.fighterInfoRow}>
+                            {fight.fighter_2_flag ? (
+                                <Image
+                                    source={{ uri: fight.fighter_2_flag }}
+                                    style={styles.flagImage}
+                                    contentFit="cover"
+                                    resizeMode="cover"
+                                />
+                            ) : null}
+                            <View style={styles.fighterNameContainer}>
+                                <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
+                                {fighter2Name.lastName !== '' && (
+                                    <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
+                                )}
+                            </View>
                         </View>
+                        {fight.fighter_2_rank && (
+                            <Text style={styles.fighterRank}>{fight.fighter_2_rank}</Text>
+                        )}
                     </View>
                 </View>
             </View>
@@ -167,76 +198,100 @@ const styles = StyleSheet.create({
     },
     fightCard: {
         backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        elevation: 4,
     },
     fightHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: 12,
         paddingBottom: 6,
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
     },
-    centerSection: {
-        flex: 1,
-        alignItems: 'center',
-    },
     fightWeight: {
-        fontSize: 12,
-        fontWeight: '600',
-        backgroundColor: '#FFD700',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 4,
+        fontSize: 16,
+        fontWeight: '700',
+        backgroundColor: '#e0e7ef',
+        color: '#2a3a4d',
+        paddingHorizontal: 18,
+        paddingVertical: 6,
+        borderRadius: 20,
+        alignSelf: 'center',
+        marginVertical: 4,
+        overflow: 'hidden',
     },
     fightersContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        marginTop: 8,
     },
-    fighter: {
+    fighterSection: {
         flex: 1,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     fighterImage: {
         width: 90,
         height: 90,
         borderRadius: 12,
         marginBottom: 8,
+        backgroundColor: '#fafafa',
+    },
+    fighterInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 2,
+    },
+    flagImage: {
+        width: 32,
+        height: 24,
+        marginRight: 6,
+        borderRadius: 4,
+        overflow: 'hidden',
+        backgroundColor: '#fff',
+        alignSelf: 'center',
     },
     fighterNameContainer: {
-        alignItems: 'center',
-        minHeight: 35,
+        alignItems: 'flex-start',
         justifyContent: 'center',
     },
     fighterFirstName: {
-        fontSize: 13,
+        fontSize: 15,
         fontWeight: 'bold',
-        textAlign: 'center',
-        paddingHorizontal: 4,
+        textAlign: 'left',
+        color: '#222',
     },
     fighterLastName: {
-        fontSize: 13,
+        fontSize: 15,
         fontWeight: 'bold',
-        textAlign: 'center',
-        paddingHorizontal: 4,
+        textAlign: 'left',
+        color: '#222',
+        marginTop: 1,
+    },
+    fighterRank: {
+        fontSize: 12,
+        color: '#888',
         marginTop: 2,
+        fontWeight: '600',
+    },
+    vsContainer: {
+        width: 48,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     vsText: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#666',
-        marginHorizontal: 12,
     },
     eventDate: {
         fontSize: 14,
