@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.core.config import add_cors
 from app.api.ufc_routes import router
+from app.services.ufc_scraper import UFCScraper
 
 app = FastAPI()
 

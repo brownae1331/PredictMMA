@@ -1,12 +1,32 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Event, Fight } from '../../types';
+import { Event, Fight } from '../types/ufc_types';
+import { getEventFights } from '../lib/api';
 
 export default function EventDetailsScreen() {
     const { eventData } = useLocalSearchParams();
     const event: Event = JSON.parse(eventData as string);
+    const [fights, setFights] = useState<Fight[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchFights = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const data = await getEventFights(event.event_url);
+                setFights(data);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'An error occurred');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchFights();
+    }, [event.event_url]);
 
     const formatFighterName = (fullName: string) => {
         const nameParts = fullName.trim().split(' ');
@@ -25,23 +45,17 @@ export default function EventDetailsScreen() {
         return (
             <View key={index} style={styles.fightCard}>
                 <View style={styles.fightHeader}>
-                    <View style={styles.leftSection}>
-                        <Text style={styles.cardPosition}>{fight.card_position}</Text>
-                    </View>
                     <View style={styles.centerSection}>
                         <Text style={styles.fightWeight}>{fight.fight_weight}</Text>
                     </View>
-                    <View style={styles.rightSection}>
-                        <Text style={styles.numRounds}>{fight.num_rounds}</Text>
-                    </View>
                 </View>
-
                 <View style={styles.fightersContainer}>
                     <View style={styles.fighter}>
                         <Image
                             source={{ uri: fight.fighter_1_image }}
                             style={styles.fighterImage}
                             contentFit="cover"
+                            contentPosition="top"
                         />
                         <View style={styles.fighterNameContainer}>
                             <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
@@ -50,14 +64,13 @@ export default function EventDetailsScreen() {
                             )}
                         </View>
                     </View>
-
                     <Text style={styles.vsText}>VS</Text>
-
                     <View style={styles.fighter}>
                         <Image
                             source={{ uri: fight.fighter_2_image }}
                             style={styles.fighterImage}
                             contentFit="cover"
+                            contentPosition="top"
                         />
                         <View style={styles.fighterNameContainer}>
                             <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
@@ -85,9 +98,16 @@ export default function EventDetailsScreen() {
             <ScrollView style={styles.scrollView}>
                 <View style={styles.mainContent}>
                     {/* All Fights */}
-                    <Text style={styles.fightsTitle}>All Fights ({event.event_fight_data.length})</Text>
-
-                    {event.event_fight_data.map((fight, index) => renderFightCard(fight, index))}
+                    <Text style={styles.fightsTitle}>All Fights ({fights.length})</Text>
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#000" style={{ marginTop: 20 }} />
+                    ) : error ? (
+                        <Text style={{ color: 'red', textAlign: 'center', marginTop: 20 }}>{error}</Text>
+                    ) : fights.length === 0 ? (
+                        <Text style={{ textAlign: 'center', marginTop: 20 }}>No fights found for this event.</Text>
+                    ) : (
+                        fights.map((fight, index) => renderFightCard(fight, index))
+                    )}
                 </View>
             </ScrollView>
         </View>
@@ -167,23 +187,9 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
     },
-    leftSection: {
-        flex: 1,
-        alignItems: 'flex-start',
-    },
     centerSection: {
         flex: 1,
         alignItems: 'center',
-    },
-    rightSection: {
-        flex: 1,
-        alignItems: 'flex-end',
-    },
-    cardPosition: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#FF6B35',
-        textTransform: 'uppercase',
     },
     fightWeight: {
         fontSize: 12,
@@ -192,10 +198,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 4,
-    },
-    numRounds: {
-        fontSize: 12,
-        color: '#666',
     },
     fightersContainer: {
         flexDirection: 'row',
@@ -235,5 +237,14 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#666',
         marginHorizontal: 12,
+    },
+    eventDate: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 8,
+    },
+    eventVenue: {
+        fontSize: 14,
+        color: '#666',
     },
 }); 
