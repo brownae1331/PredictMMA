@@ -88,6 +88,14 @@ class UFCScraper:
             return f"https://flagcdn.com/w320/{country_code.lower()}.png"
         return ""
 
+    def _normalize_image_url(self, image_url: str) -> str:
+        """
+        Ensures the image URL is absolute by prepending base_url if necessary.
+        """
+        if image_url and not image_url.startswith("http"):
+            return f"{self.base_url}{image_url}"
+        return image_url
+
     def get_main_event_data(self, event_link: str) -> MainEvent:
         """
         Scrapes the fight data for the main event of a UFC event.
@@ -109,8 +117,8 @@ class UFCScraper:
         fighter_2_name = self._extract_fighter_name(fighter_2_link_element)
 
         fighter_images = fight_container.find_all("img", class_="image-style-event-fight-card-upper-body-of-standing-athlete")
-        fighter_1_image = fighter_images[0].get("src")
-        fighter_2_image = fighter_images[1].get("src")
+        fighter_1_image = self._normalize_image_url(fighter_images[0].get("src"))
+        fighter_2_image = self._normalize_image_url(fighter_images[1].get("src"))
 
         ranks_row = fight_container.find("div", class_="c-listing-fight__ranks-row")
         fighter_1_rank = ""
@@ -189,8 +197,8 @@ class UFCScraper:
             fighter_2_name = self._extract_fighter_name(fighter_2_link_element)
             
             fighter_images = container.find_all("img", class_="image-style-event-fight-card-upper-body-of-standing-athlete")
-            fighter_1_image = fighter_images[0].get("src")
-            fighter_2_image = fighter_images[1].get("src")
+            fighter_1_image = self._normalize_image_url(fighter_images[0].get("src"))
+            fighter_2_image = self._normalize_image_url(fighter_images[1].get("src"))
             
             ranks_row = container.find("div", class_="c-listing-fight__ranks-row")
             fighter_1_rank = ""

@@ -53,6 +53,8 @@ def get_event_fights(event_url: str) -> List[Fight]:
     """
     try:
         fights = scraper.get_fight_data(event_url)
+        if fights is None:
+            return []
         return fights
     except Exception as e:
         print(f"Error in get_event_fights: {e}")
@@ -65,6 +67,8 @@ def get_event_main_event(event_url: str) -> MainEvent:
     """
     try:
         main_event = scraper.get_main_event_data(event_url)
+        if main_event is None:
+            return {"error": "No main event found"}
         return main_event
     except Exception as e:
         print(f"Error in get_event_main_event: {e}")
