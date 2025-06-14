@@ -2,7 +2,6 @@ from fastapi import APIRouter
 from app.services.ufc_scraper import UFCScraper
 from app.schemas.ufc_schemas import Event, EventSummary, Fight, MainEvent
 from typing import List
-import traceback
 
 router = APIRouter()
 scraper = UFCScraper()
@@ -29,7 +28,6 @@ def get_event(event_url: str) -> Event:
         return event
     except Exception as e:
         print(f"Error in get_event: {e}")#
-        traceback.print_exc()
         return {"error": str(e)}
 
 @router.get("/event/summary")
