@@ -38,12 +38,21 @@ export default function EventDetailsScreen() {
         return { firstName, lastName };
     };
 
+    const handleFightPress = (fight: Fight) => {
+        router.push({
+            pathname: '/make-prediction',
+            params: {
+                fightData: JSON.stringify(fight)
+            }
+        });
+    };
+
     const renderFightCard = (fight: Fight, index: number) => {
         const fighter1Name = formatFighterName(fight.fighter_1_name);
         const fighter2Name = formatFighterName(fight.fighter_2_name);
 
         return (
-            <View key={index} style={styles.fightCard}>
+            <TouchableOpacity key={index} style={styles.fightCard} onPress={() => handleFightPress(fight)} activeOpacity={0.8}>
                 <View style={styles.fightHeader}>
                     <Text style={styles.fightWeight}>{fight.fight_weight}</Text>
                 </View>
@@ -111,7 +120,7 @@ export default function EventDetailsScreen() {
                         )}
                     </View>
                 </View>
-            </View>
+            </TouchableOpacity>
         );
     };
 
