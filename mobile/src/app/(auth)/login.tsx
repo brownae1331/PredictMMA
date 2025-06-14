@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { loginUser } from '../../lib/api';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
     const [username, setUsername] = useState('');
@@ -29,6 +30,8 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             const data = await loginUser(username, password);
+            await AsyncStorage.setItem('username', username);
+            await AsyncStorage.setItem('access_token', data.access_token);
             router.replace('/(tabs)/home');
         } catch (error: any) {
             setError(error.message || 'Login failed.');

@@ -1,7 +1,24 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 
 export default function ProfileScreen() {
+    const [username, setUsername] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchUsername = async () => {
+            const storedUsername = await AsyncStorage.getItem('username');
+            setUsername(storedUsername);
+        };
+        fetchUsername();
+    }, []);
+
+    const handleLogout = async () => {
+        await AsyncStorage.clear();
+        router.replace('/(auth)/login');
+    };
+
     return (
         <View style={styles.container}>
             {/* Header Banner */}
@@ -13,10 +30,10 @@ export default function ProfileScreen() {
 
             {/* Main Content */}
             <View style={styles.mainContent}>
-                <Text style={styles.welcomeTitle}>Welcome Home</Text>
-                <Text style={styles.welcomeSubtitle}>
-                    This is your home screen
-                </Text>
+                <Text style={styles.welcomeTitle}>Welcome, {username || 'User'}!</Text>
+                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                    <Text style={styles.logoutButtonText}>Logout</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -57,5 +74,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#4b5563',
         textAlign: 'center',
+    },
+    logoutButton: {
+        marginTop: 24,
+        backgroundColor: '#ff3b30',
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+        borderRadius: 8,
+    },
+    logoutButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 });
