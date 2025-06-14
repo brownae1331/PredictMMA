@@ -1,5 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from typing import Annotated
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 URL_DATABASE = "postgresql://postgres:Aeb130805@localhost:5432/predictmma"
 
@@ -15,3 +18,5 @@ def get_db():
         yield db
     finally:
         db.close()
+
+db_dependency = Annotated[Session, Depends(get_db)]
