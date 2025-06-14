@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from typing import List
-from app.models.ufc_models import MainEvent, EventSummary, Fight, Event
+from app.schemas.ufc_schemas import MainEvent, EventSummary, Fight, Event
 import pycountry
 
 class UFCScraper:

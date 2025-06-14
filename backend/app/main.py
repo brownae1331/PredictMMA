@@ -1,13 +1,16 @@
 from fastapi import FastAPI
 from app.core.config import add_cors
-from app.api.ufc_routes import router
-from app.services.ufc_scraper import UFCScraper
+from app.api.ufc_routes import router as ufc_routes
+from app.db.database import engine
+from app.db.models import models
 
 app = FastAPI()
 
 add_cors(app)
 
-app.include_router(router, prefix="/ufc", tags=["UFC"])
+models.Base.metadata.create_all(bind=engine)
+
+app.include_router(ufc_routes, prefix="/ufc", tags=["UFC"])
 
 @app.get("/")
 def read_root():

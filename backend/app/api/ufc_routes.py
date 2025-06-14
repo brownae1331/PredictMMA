@@ -1,7 +1,6 @@
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 from app.services.ufc_scraper import UFCScraper
-from app.models.ufc_models import Event, EventSummary, Fight, MainEvent
+from app.schemas.ufc_schemas import Event, EventSummary, Fight, MainEvent
 from typing import List
 import traceback
 
