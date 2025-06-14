@@ -3,7 +3,6 @@ from app.schemas.auth_schemas import UserRegister, UserLogin
 from app.db.database import db_dependency
 from app.db.models import models
 from app.core.auth_utils import create_access_token, get_password_hash, verify_password
-from datetime import timedelta
 
 router = APIRouter()
 
