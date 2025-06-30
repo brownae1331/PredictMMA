@@ -9,6 +9,7 @@ export default function MakePredictionScreen() {
     const fight: Fight = JSON.parse(fightData as string);
     const [selectedFighter, setSelectedFighter] = useState<1 | 2 | null>(null);
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+    const [selectedRound, setSelectedRound] = useState<number | null>(null);
 
     const formatFighterName = (fullName: string) => {
         const nameParts = fullName.trim().split(' ');
@@ -22,6 +23,16 @@ export default function MakePredictionScreen() {
 
     const fighter1Name = formatFighterName(fight.fighter_1_name);
     const fighter2Name = formatFighterName(fight.fighter_2_name);
+
+    // Handle submit action (placeholder for now)
+    const handleSubmit = () => {
+        // In a future iteration, this will call an API or navigate with the prediction payload
+        console.log('Prediction submitted:', {
+            fighter: selectedFighter,
+            method: selectedMethod,
+            round: selectedRound,
+        });
+    };
 
     return (
         <View style={styles.container}>
@@ -77,6 +88,8 @@ export default function MakePredictionScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
+
+            { }
             {selectedFighter && (
                 <View style={styles.selectionContainer}>
                     <Text style={styles.subtitleText}>Method of Victory</Text>
@@ -125,13 +138,99 @@ export default function MakePredictionScreen() {
                     </View>
                 </View>
             )}
+
+            {/* Round Selection */}
             {(selectedMethod === 'Knockout' || selectedMethod === 'Submission') && (
                 <View style={styles.selectionContainer}>
-                    <Text style={styles.subtitleText}>Additional Options (Placeholder)</Text>
-                    <Text style={styles.fighterName}>
-                        This is a placeholder for {selectedMethod} options.
-                    </Text>
+                    <Text style={styles.subtitleText}>Select Round</Text>
+                    <View style={styles.roundImagesRow}>
+                        {/* Round 1 */}
+                        <TouchableOpacity style={styles.roundItem} onPress={() => setSelectedRound(1)} activeOpacity={0.8}>
+                            <View style={[
+                                styles.roundImage,
+                                selectedRound === 1 && styles.selectedRoundImage
+                            ]}>
+                                <Image
+                                    source={require('../../assets/images/one.png')}
+                                    style={styles.roundNumberImage}
+                                    contentFit="cover"
+                                    contentPosition="center"
+                                />
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Round 2 */}
+                        <TouchableOpacity style={styles.roundItem} onPress={() => setSelectedRound(2)} activeOpacity={0.8}>
+                            <View style={[
+                                styles.roundImage,
+                                selectedRound === 2 && styles.selectedRoundImage
+                            ]}>
+                                <Image
+                                    source={require('../../assets/images/two.png')}
+                                    style={styles.roundNumberImage}
+                                    contentFit="cover"
+                                    contentPosition="center"
+                                />
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Round 3 */}
+                        <TouchableOpacity style={styles.roundItem} onPress={() => setSelectedRound(3)} activeOpacity={0.8}>
+                            <View style={[
+                                styles.roundImage,
+                                selectedRound === 3 && styles.selectedRoundImage
+                            ]}>
+                                <Image
+                                    source={require('../../assets/images/three.png')}
+                                    style={styles.roundNumberImage}
+                                    contentFit="cover"
+                                    contentPosition="center"
+                                />
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Round 4 */}
+                        <TouchableOpacity style={styles.roundItem} onPress={() => setSelectedRound(4)} activeOpacity={0.8}>
+                            <View style={[
+                                styles.roundImage,
+                                selectedRound === 4 && styles.selectedRoundImage
+                            ]}>
+                                <Image
+                                    source={require('../../assets/images/four.png')}
+                                    style={styles.roundNumberImage}
+                                    contentFit="cover"
+                                    contentPosition="center"
+                                />
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Round 5 */}
+                        <TouchableOpacity style={styles.roundItem} onPress={() => setSelectedRound(5)} activeOpacity={0.8}>
+                            <View style={[
+                                styles.roundImage,
+                                selectedRound === 5 && styles.selectedRoundImage
+                            ]}>
+                                <Image
+                                    source={require('../../assets/images/five.png')}
+                                    style={styles.roundNumberImage}
+                                    contentFit="cover"
+                                    contentPosition="center"
+                                />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
+            )}
+
+            {/* Submit Button */}
+            {(selectedMethod === 'Decision' || selectedRound) && (
+                <TouchableOpacity
+                    style={styles.submitButton}
+                    onPress={handleSubmit}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.submitButtonText}>Submit Prediction</Text>
+                </TouchableOpacity>
             )}
         </View>
     );
@@ -263,5 +362,53 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 6,
         elevation: 6,
+    },
+    roundImagesRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        marginTop: 8,
+    },
+    roundItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginHorizontal: 2,
+    },
+    roundImage: {
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    selectedRoundImage: {
+        borderColor: '#007AFF',
+        borderWidth: 3,
+        shadowColor: '#007AFF',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 6,
+    },
+    roundNumberImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+    },
+    submitButton: {
+        backgroundColor: '#007AFF',
+        paddingVertical: 14,
+        paddingHorizontal: 32,
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 24,
+        marginHorizontal: 16,
+        alignSelf: 'stretch',
+    },
+    submitButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
