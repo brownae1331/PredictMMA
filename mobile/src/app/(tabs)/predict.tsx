@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Event } from '../../types/ufc_types';
-import { getEvents } from '../../lib/api';
+import { getEvents } from '../../lib/api/ufc_api';
 
 export default function PredictScreen() {
     const [events, setEvents] = useState<Event[]>([]);

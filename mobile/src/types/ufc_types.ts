@@ -18,6 +18,7 @@ export interface EventSummary {
 
 export interface Fight {
     event_url: string;
+    fight_idx: number;
     fighter_1_link: string;
     fighter_2_link: string;
     fighter_1_name: string;

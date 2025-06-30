@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 from pydantic import BaseModel
 
 class MainEvent(BaseModel):
@@ -20,6 +19,7 @@ class EventSummary(BaseModel):
 
 class Fight(BaseModel):
     event_url: str
+    fight_idx: int
     fighter_1_link: str
     fighter_2_link: str
     fighter_1_name: str

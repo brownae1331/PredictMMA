@@ -1,7 +1,5 @@
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
-from app.db.database import db_dependency
-from app.db.models import models
 from jose import jwt, JWTError
 from datetime import datetime, timezone, timedelta
 

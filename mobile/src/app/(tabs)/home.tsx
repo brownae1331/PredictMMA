@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { EventSummary, MainEvent } from '../../types/ufc_types';
-import { getEventSummaries, getEventMainEvent } from '../../lib/api';
+import { getEventSummaries, getEventMainEvent } from '../../lib/api/ufc_api';
 
 // Define a new type for the combined data
 interface EventWithMainEvent {
