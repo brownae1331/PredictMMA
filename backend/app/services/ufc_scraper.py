@@ -187,7 +187,7 @@ class UFCScraper:
         
         fight_data_list = []
         
-        for container in fight_containers:
+        for fight_idx, container in enumerate(fight_containers):
             fighter_1_link_element = container.find("div", class_="c-listing-fight__corner-name c-listing-fight__corner-name--red")
             fighter_1_link = fighter_1_link_element.find("a").get("href")
             fighter_1_name = self._extract_fighter_name(fighter_1_link_element)
@@ -221,6 +221,7 @@ class UFCScraper:
 
             fight_data = Fight(
                 event_url=event_link,
+                fight_idx=fight_idx,
                 fighter_1_link=fighter_1_link,
                 fighter_2_link=fighter_2_link,
                 fighter_1_name=fighter_1_name,
@@ -231,7 +232,7 @@ class UFCScraper:
                 fighter_2_rank=fighter_2_rank,
                 fighter_1_flag=fighter_1_flag,
                 fighter_2_flag=fighter_2_flag,
-                fight_weight=fight_weight
+                fight_weight=fight_weight,
             )
             fight_data_list.append(fight_data)
 

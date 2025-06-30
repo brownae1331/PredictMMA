@@ -3,11 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Fight } from '../types/ufc_types';
+import { jwtDecode } from 'jwt-decode';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createPrediction } from '../lib/api/predict_api';
 
 export default function MakePredictionScreen() {
     const { fightData } = useLocalSearchParams();
     const fight: Fight = JSON.parse(fightData as string);
-    const [selectedFighter, setSelectedFighter] = useState<1 | 2 | null>(null);
+    const [selectedFighter, setSelectedFighter] = useState<string | null>(null);
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
     const [selectedRound, setSelectedRound] = useState<number | null>(null);
 
@@ -25,13 +28,36 @@ export default function MakePredictionScreen() {
     const fighter2Name = formatFighterName(fight.fighter_2_name);
 
     // Handle submit action (placeholder for now)
-    const handleSubmit = () => {
-        // In a future iteration, this will call an API or navigate with the prediction payload
-        console.log('Prediction submitted:', {
-            fighter: selectedFighter,
-            method: selectedMethod,
-            round: selectedRound,
-        });
+    const handleSubmit = async () => {
+        try {
+            const token = await AsyncStorage.getItem('access_token');
+
+            let user_id: number | null = null;
+            if (token) {
+                const decoded: any = jwtDecode(token);
+                if (decoded && decoded.sub) {
+                    user_id = decoded.sub as number;
+                }
+            }
+
+            if (!user_id || !selectedFighter || !selectedMethod) {
+                console.warn('Prediction data is incomplete.');
+                return;
+            }
+
+            await createPrediction({
+                user_id: user_id,
+                event_url: fight.event_url,
+                fight_idx: fight.fight_idx,
+                fighter_prediction: selectedFighter,
+                method_prediction: selectedMethod,
+                round_prediction: selectedRound,
+            }, token ?? undefined);
+
+            router.back();
+        } catch (error) {
+            console.error('Error submitting prediction:', error);
+        }
     };
 
     return (
@@ -50,12 +76,12 @@ export default function MakePredictionScreen() {
                 <Text style={styles.subtitleText}>{selectedFighter ? 'Fighter' : 'Select Fighter'}</Text>
                 <View style={styles.fightersRow}>
                     {/* Fighter 1 */}
-                    <TouchableOpacity style={styles.fighterSection} onPress={() => setSelectedFighter(1)} activeOpacity={0.8}>
+                    <TouchableOpacity style={styles.fighterSection} onPress={() => setSelectedFighter(fight.fighter_1_name)} activeOpacity={0.8}>
                         <Image
                             source={{ uri: fight.fighter_1_image }}
                             style={[
                                 styles.fighterImage,
-                                selectedFighter === 1 && styles.selectedFighterImage
+                                selectedFighter === fight.fighter_1_name && styles.selectedFighterImage
                             ]}
                             contentFit="cover"
                             contentPosition="top"
@@ -69,12 +95,12 @@ export default function MakePredictionScreen() {
                     </TouchableOpacity>
 
                     {/* Fighter 2 */}
-                    <TouchableOpacity style={styles.fighterSection} onPress={() => setSelectedFighter(2)} activeOpacity={0.8}>
+                    <TouchableOpacity style={styles.fighterSection} onPress={() => setSelectedFighter(fight.fighter_2_name)} activeOpacity={0.8}>
                         <Image
                             source={{ uri: fight.fighter_2_image }}
                             style={[
                                 styles.fighterImage,
-                                selectedFighter === 2 && styles.selectedFighterImage
+                                selectedFighter === fight.fighter_2_name && styles.selectedFighterImage
                             ]}
                             contentFit="cover"
                             contentPosition="top"

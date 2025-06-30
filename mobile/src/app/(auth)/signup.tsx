@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Keyboard } from 'react-native';
-import { registerUser } from '../../lib/api';
+import { registerUser } from '../../lib/api/auth_api';
 import { router } from 'expo-router';
 
 export default function SignupScreen() {

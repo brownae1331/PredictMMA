@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Event, Fight } from '../types/ufc_types';
-import { getEventFights } from '../lib/api';
+import { getEventFights } from '../lib/api/ufc_api';
 
 export default function EventDetailsScreen() {
     const { eventData } = useLocalSearchParams();
