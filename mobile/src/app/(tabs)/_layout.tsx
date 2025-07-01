@@ -18,6 +18,16 @@ export default function TabLayout() {
             />
 
             <Tabs.Screen
+                name="events"
+                options={{
+                    title: "Events",
+                    tabBarIcon: ({ color, size }) => (
+                        <FontAwesome6 name="calendar" color={color} size={size} />
+                    ),
+                }}
+            />
+
+            <Tabs.Screen
                 name="predict"
                 options={{
                     title: "Predict",
