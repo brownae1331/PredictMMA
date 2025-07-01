@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Fight } from '../types/ufc_types';
 import { jwtDecode } from 'jwt-decode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createPrediction } from '../lib/api/predict_api';
+import { createPrediction, getPrediction } from '../lib/api/predict_api';
 
 export default function MakePredictionScreen() {
     const { fightData } = useLocalSearchParams();
@@ -13,6 +13,37 @@ export default function MakePredictionScreen() {
     const [selectedFighter, setSelectedFighter] = useState<string | null>(null);
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
     const [selectedRound, setSelectedRound] = useState<number | null>(null);
+
+    useEffect(() => {
+        const fetchExistingPrediction = async () => {
+            try {
+                const token = await AsyncStorage.getItem('access_token');
+                if (!token) return;
+
+                const decoded: any = jwtDecode(token);
+                if (!decoded || !decoded.sub) return;
+
+                const user_id = decoded.sub as number;
+
+                const existingPrediction = await getPrediction(
+                    user_id,
+                    fight.event_url,
+                    fight.fight_idx,
+                    token ?? undefined,
+                );
+
+                if (existingPrediction) {
+                    setSelectedFighter(existingPrediction.fighter_prediction);
+                    setSelectedMethod(existingPrediction.method_prediction);
+                    setSelectedRound(existingPrediction.round_prediction);
+                }
+            } catch (error) {
+                console.error('Error fetching existing prediction:', error);
+            }
+        };
+
+        fetchExistingPrediction();
+    }, []);
 
     const formatFighterName = (fullName: string) => {
         const nameParts = fullName.trim().split(' ');
