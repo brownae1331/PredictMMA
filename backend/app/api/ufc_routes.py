@@ -18,7 +18,7 @@ def get_upcoming_events_links() -> List[str]:
         print(f"Error in get_upcoming_events_links: {e}")
         return {"error": str(e)}
 
-@router.get("/event/")
+@router.get("/event")
 def get_event(event_url: str) -> Event:
     """
     Get a UFC event.
