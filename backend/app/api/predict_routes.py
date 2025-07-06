@@ -14,7 +14,7 @@ async def create_or_update_prediction(prediction: PredictionSchema, db: db_depen
     db_prediction = db.query(models.Prediction).filter(
         models.Prediction.user_id == prediction.user_id,
         models.Prediction.event_url == prediction.event_url,
-        models.Prediction.fight_idx == prediction.fight_idx,
+        models.Prediction.fight_id == prediction.fight_id,
     ).first()
 
     if db_prediction:
@@ -25,6 +25,7 @@ async def create_or_update_prediction(prediction: PredictionSchema, db: db_depen
         db_prediction = models.Prediction(
             user_id=prediction.user_id,
             event_url=prediction.event_url,
+            fight_id=prediction.fight_id,
             fight_idx=prediction.fight_idx,
             fighter_prediction=prediction.fighter_prediction,
             method_prediction=prediction.method_prediction,
@@ -41,15 +42,15 @@ async def create_or_update_prediction(prediction: PredictionSchema, db: db_depen
     return {"message": "Prediction saved successfully"}
 
 @router.get("", response_model=PredictionSchema)
-async def get_prediction(user_id: int, event_url: str, fight_idx: int, db: db_dependency):
-    """Return the saved prediction for a given *user_id*, *event_url* and *fight_idx*."""
+async def get_prediction(user_id: int, event_url: str, fight_id: str, db: db_dependency):
+    """Return the saved prediction for a given *user_id*, *event_url* and *fight_id*."""
 
     db_prediction = (
         db.query(models.Prediction)
         .filter(
             models.Prediction.user_id == user_id,
             models.Prediction.event_url == event_url,
-            models.Prediction.fight_idx == fight_idx,
+            models.Prediction.fight_id == fight_id,
         )
         .first()
     )
@@ -60,6 +61,7 @@ async def get_prediction(user_id: int, event_url: str, fight_idx: int, db: db_de
     return PredictionSchema(
         user_id=db_prediction.user_id,
         event_url=db_prediction.event_url,
+        fight_id=db_prediction.fight_id,
         fight_idx=db_prediction.fight_idx,
         fighter_prediction=db_prediction.fighter_prediction,
         method_prediction=db_prediction.method_prediction,
@@ -83,6 +85,7 @@ async def get_all_predictions(user_id: int, db: db_dependency):
         PredictionSchema(
             user_id=p.user_id,
             event_url=p.event_url,
+            fight_id=p.fight_id,
             fight_idx=p.fight_idx,
             fighter_prediction=p.fighter_prediction,
             method_prediction=p.method_prediction,

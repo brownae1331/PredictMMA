@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     View,
     Text,
@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import { useFocusEffect } from 'expo-router';
 
 import { getAllPredictions } from '../../lib/api/predict_api';
 import { getEventSummaryByUrl } from '../../lib/api/ufc_api';
@@ -92,9 +93,12 @@ export default function PredictScreen() {
         }
     }, []);
 
-    useEffect(() => {
-        fetchPredictions();
-    }, [fetchPredictions]);
+    // Automatically refresh predictions whenever this screen/tab comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            fetchPredictions();
+        }, [fetchPredictions])
+    );
 
     return (
         <View style={styles.container}>
@@ -108,7 +112,7 @@ export default function PredictScreen() {
             {/* Predictions List */}
             <SectionList
                 sections={sections}
-                keyExtractor={(item) => `${item.event_url}-${item.fight_idx}`}
+                keyExtractor={(item) => `${item.event_url}-${item.fight_id}`}
                 renderSectionHeader={({ section: { title } }) => (
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionHeaderText}>{title}</Text>

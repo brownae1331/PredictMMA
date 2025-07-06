@@ -10,6 +10,7 @@ import { createPrediction, getPrediction } from '../lib/api/predict_api';
 export default function MakePredictionScreen() {
     const { fightData } = useLocalSearchParams();
     const fight: Fight = JSON.parse(fightData as string);
+    const fightId = `${fight.fighter_1_name} vs. ${fight.fighter_2_name}`;
     const [selectedFighter, setSelectedFighter] = useState<string | null>(null);
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
     const [selectedRound, setSelectedRound] = useState<number | null>(null);
@@ -28,7 +29,7 @@ export default function MakePredictionScreen() {
                 const existingPrediction = await getPrediction(
                     user_id,
                     fight.event_url,
-                    fight.fight_idx,
+                    fightId,
                     token ?? undefined,
                 );
 
@@ -79,6 +80,7 @@ export default function MakePredictionScreen() {
             await createPrediction({
                 user_id: user_id,
                 event_url: fight.event_url,
+                fight_id: fightId,
                 fight_idx: fight.fight_idx,
                 fighter_prediction: selectedFighter,
                 method_prediction: selectedMethod,

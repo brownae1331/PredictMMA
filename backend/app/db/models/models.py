@@ -13,7 +13,8 @@ class Prediction(Base):
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     event_url = Column(String, primary_key=True)
-    fight_idx = Column(Integer, primary_key=True)
+    fight_id = Column(String, primary_key=True)
+    fight_idx = Column(Integer)
     fighter_prediction = Column(String)
     method_prediction = Column(String)
     round_prediction = Column(Integer, nullable=True)

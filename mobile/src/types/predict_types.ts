@@ -1,6 +1,7 @@
 export interface Prediction {
     user_id: number;
     event_url: string;
+    fight_id: string;
     fight_idx: number;
     fighter_prediction: string;
     method_prediction: string;
