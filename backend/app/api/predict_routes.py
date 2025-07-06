@@ -3,10 +3,11 @@ from app.schemas.predict_schemas import Prediction as PredictionSchema
 from app.db.database import db_dependency
 from app.db.models import models
 from sqlalchemy.exc import IntegrityError
+from typing import List
 
 router = APIRouter()
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_or_update_prediction(prediction: PredictionSchema, db: db_dependency):
     """Create a new prediction or update an existing one for the given user & fight."""
 
@@ -39,7 +40,7 @@ async def create_or_update_prediction(prediction: PredictionSchema, db: db_depen
 
     return {"message": "Prediction saved successfully"}
 
-@router.get("/", response_model=PredictionSchema)
+@router.get("", response_model=PredictionSchema)
 async def get_prediction(user_id: int, event_url: str, fight_idx: int, db: db_dependency):
     """Return the saved prediction for a given *user_id*, *event_url* and *fight_idx*."""
 
@@ -64,3 +65,28 @@ async def get_prediction(user_id: int, event_url: str, fight_idx: int, db: db_de
         method_prediction=db_prediction.method_prediction,
         round_prediction=db_prediction.round_prediction,
     )
+
+@router.get("/all")
+async def get_all_predictions(user_id: int, db: db_dependency):
+    """Return all predictions for a given *user_id*."""
+    db_predictions = (
+        db.query(models.Prediction)
+        .filter(models.Prediction.user_id == user_id)
+        .order_by(models.Prediction.event_url)
+        .all()
+    )
+
+    if not db_predictions:
+        raise HTTPException(status_code=404, detail="No predictions found")
+
+    return [
+        PredictionSchema(
+            user_id=p.user_id,
+            event_url=p.event_url,
+            fight_idx=p.fight_idx,
+            fighter_prediction=p.fighter_prediction,
+            method_prediction=p.method_prediction,
+            round_prediction=p.round_prediction,
+        )
+        for p in db_predictions
+    ]

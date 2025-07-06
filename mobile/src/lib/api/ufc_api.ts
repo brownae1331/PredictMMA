@@ -74,3 +74,14 @@ export async function getEventMainEvent(event_url: string): Promise<MainEvent> {
         throw error;
     }
 }
+
+export async function getEventSummaryByUrl(event_url: string): Promise<EventSummary> {
+    try {
+        const url = new URL(`${API_CONFIG.BASE_URL}/ufc/event/summary?event_url=${event_url}`);
+        const response = await fetch(url.toString());
+        return handleResponse<EventSummary>(response);
+    } catch (error) {
+        console.error('Error fetching event summary:', error);
+        throw error;
+    }
+}

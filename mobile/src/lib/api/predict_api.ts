@@ -45,3 +45,27 @@ export async function getPrediction(
 
     return handleResponse<Prediction>(response);
 }
+
+export async function getAllPredictions(
+    user_id: number,
+    token?: string,
+): Promise<Prediction[]> {
+    const url = new URL(`${API_CONFIG.BASE_URL}/predict/all`);
+    url.searchParams.append('user_id', user_id.toString());
+
+    const headers: Record<string, string> = { ...API_CONFIG.HEADERS };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers,
+    });
+
+    if (response.status === 404) {
+        return [];
+    }
+
+    return handleResponse<Prediction[]>(response);
+}
