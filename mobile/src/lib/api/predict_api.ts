@@ -21,13 +21,13 @@ export async function createPrediction(prediction: Prediction, token?: string): 
 export async function getPrediction(
     user_id: number,
     event_url: string,
-    fight_idx: number,
+    fight_id: string,
     token?: string,
 ): Promise<Prediction | null> {
     const url = new URL(`${API_CONFIG.BASE_URL}/predict`);
     url.searchParams.append('user_id', user_id.toString());
     url.searchParams.append('event_url', event_url);
-    url.searchParams.append('fight_idx', fight_idx.toString());
+    url.searchParams.append('fight_id', fight_id);
 
     const headers: Record<string, string> = { ...API_CONFIG.HEADERS };
     if (token) {
