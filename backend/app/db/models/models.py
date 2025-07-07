@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from app.db.database import Base
 
 class User(Base):
@@ -18,3 +18,12 @@ class Prediction(Base):
     fighter_prediction = Column(String)
     method_prediction = Column(String)
     round_prediction = Column(Integer, nullable=True)
+
+class Event(Base):
+    __tablename__ = 'events'
+
+    event_url = Column(String, primary_key=True)
+    event_title = Column(String)
+    event_date = Column(DateTime(timezone=True))
+    event_location = Column(String)
+    event_organizer = Column(String)
