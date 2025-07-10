@@ -27,3 +27,16 @@ class Event(Base):
     event_date = Column(DateTime(timezone=True))
     event_location = Column(String)
     event_organizer = Column(String)
+
+class Fight(Base):
+    __tablename__ = 'fights'
+
+    event_url = Column(String, ForeignKey('events.event_url'), primary_key=True)
+    fight_idx = Column(Integer, primary_key=True)
+    fighter_1_link = Column(String)
+    fighter_2_link = Column(String)
+    fight_weight = Column(String)
+    fight_winner = Column(String)
+    fight_method = Column(String)
+    fight_round = Column(Integer)
+    fight_time = Column(String)
