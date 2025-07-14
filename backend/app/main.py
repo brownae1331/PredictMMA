@@ -32,9 +32,9 @@ def read_root(db: Session = Depends(get_db)):
     upsert_events(upcoming_events, db)
 
     # Scrape and persist fights for each previous event
-    for event in upcoming_events:
+    for event in previous_events:
         print(f"Scraping fights for event: {event.event_title}")
-        fights = sherdog_scraper.get_upcoming_event_fights(event.event_url)
+        fights = sherdog_scraper.get_previous_event_fights(event.event_url)
         upsert_fights(fights, db)
 
     return {

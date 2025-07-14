@@ -1,42 +1,72 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import JSON, Column, Integer, String, ForeignKey, DateTime, Date, Index, UniqueConstraint
+from sqlalchemy.orm import relationship
 from app.db.database import Base
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True)
-    hashed_password = Column(String)
+    username = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
 
-class Prediction(Base):
-    __tablename__ = 'predictions'
-
-    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
-    event_url = Column(String, primary_key=True)
-    fight_id = Column(String, primary_key=True)
-    fight_idx = Column(Integer)
-    fighter_prediction = Column(String)
-    method_prediction = Column(String)
-    round_prediction = Column(Integer, nullable=True)
+    predictions = relationship("Prediction", back_populates="user", cascade="all, delete-orphan")
 
 class Event(Base):
-    __tablename__ = 'events'
+    __tablename__ = "events"
 
-    event_url = Column(String, primary_key=True)
-    event_title = Column(String)
-    event_date = Column(DateTime(timezone=True))
-    event_location = Column(String)
-    event_organizer = Column(String)
+    id = Column(Integer, primary_key=True)
+    url = Column(String, unique=True, nullable=False)
+    title = Column(String, nullable=False)
+    date = Column(DateTime(timezone=True))
+    location = Column(String)
+    organizer = Column(String)
+
+    fights = relationship("Fight", back_populates="event", cascade="all, delete-orphan")
+
+class Fighter(Base):
+    __tablename__ = "fighters"
+
+    id = Column(Integer, primary_key=True)
+    url = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)
+    nickname = Column(String)
+    record = Column(String)
+    country = Column(String)
+    city = Column(String)
+    age = Column(Integer)
+    dob = Column(Date)
+    height = Column(String)
+    weight = Column(String)
+    association = Column(String)
+    stats = Column(JSON) 
 
 class Fight(Base):
-    __tablename__ = 'fights'
+    __tablename__ = "fights"
 
-    event_url = Column(String, ForeignKey('events.event_url'), primary_key=True)
-    fight_idx = Column(Integer, primary_key=True)
-    fighter_1_link = Column(String)
-    fighter_2_link = Column(String)
-    fight_weight = Column(String)
-    fight_winner = Column(String)
-    fight_method = Column(String)
-    fight_round = Column(Integer)
-    fight_time = Column(String)
+    id = Column(Integer, primary_key=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
+    fighter_1_id = Column(Integer, ForeignKey("fighters.id", ondelete="CASCADE"), nullable=False)
+    fighter_2_id = Column(Integer, ForeignKey("fighters.id", ondelete="CASCADE"), nullable=False)
+    match_number = Column(Integer)
+    weight_class = Column(String)
+    winner = Column(String)
+    method = Column(String)
+    round = Column(Integer)
+    time = Column(String)
+
+    event = relationship("Event", back_populates="fights")
+    predictions = relationship("Prediction", back_populates="fight", cascade="all, delete-orphan")
+
+class Prediction(Base):
+    __tablename__ = "predictions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    fight_id = Column(Integer, ForeignKey("fights.id", ondelete="CASCADE"), nullable=False)
+    fighter_id = Column(Integer, ForeignKey("fighters.id", ondelete="CASCADE"), nullable=False)
+    method = Column(String, nullable=False)
+    round = Column(Integer, nullable=True)
+
+    user = relationship("User", back_populates="predictions")
+    fight = relationship("Fight", back_populates="predictions")
+    fighter = relationship("Fighter", back_populates="predictions")

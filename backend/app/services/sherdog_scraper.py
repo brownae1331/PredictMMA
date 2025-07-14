@@ -1,3 +1,4 @@
+import re
 import requests
 import cloudscraper
 from bs4 import BeautifulSoup
@@ -148,7 +149,9 @@ class SherdogScraper:
             fight_round = int(
                 "".join(filter(str.isdigit, resume_cells[3].get_text(strip=True)))
             )
-            fight_time = resume_cells[4].get_text(strip=True)
+            raw_time = resume_cells[4].get_text(strip=True)
+            time_match = re.search(r"\d{1,2}:\d{2}", raw_time)
+            fight_time = time_match.group(0) if time_match else ""
 
             fights.append(
                 Fight(
@@ -200,7 +203,9 @@ class SherdogScraper:
                 "".join(filter(str.isdigit, tds[5].get_text(strip=True)))
             )
 
-            fight_time = tds[6].get_text(strip=True)
+            raw_time_td = tds[6].get_text(strip=True)
+            time_match_td = re.search(r"\d{1,2}:\d{2}", raw_time_td)
+            fight_time = time_match_td.group(0) if time_match_td else ""
 
             fights.append(Fight(
                 event_url=event_url,
