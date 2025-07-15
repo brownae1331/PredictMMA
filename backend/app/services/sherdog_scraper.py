@@ -1,9 +1,8 @@
 import re
-import requests
 import cloudscraper
 from bs4 import BeautifulSoup
 from typing import List
-from app.schemas.sherdog_schemas import Event, Fight
+from app.schemas.sherdog_schemas import Event, Fight, Fighter
 from urllib.parse import urljoin
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -15,7 +14,7 @@ class SherdogScraper:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         }
 
-    def get_previous_events(self) -> List[Event]:
+    def get_previous_ufc_events(self) -> List[Event]:
         """
         Scrapes every previous UFC event from Sherdog.
         Returns a list of events.
@@ -44,11 +43,11 @@ class SherdogScraper:
                 location = tr.find("td", itemprop="location").get_text(" ", strip=True)
                 
                 events.append(Event(
-                    event_url=event_url,
-                    event_title=event_title,
-                    event_date=event_date,
-                    event_location=location,
-                    event_organizer="UFC",
+                    url=event_url,
+                    title=event_title,
+                    date=event_date,
+                    location=location,
+                    organizer="UFC",
                 ))
 
             pagination = events_container.find("span", class_="pagination")
@@ -68,7 +67,7 @@ class SherdogScraper:
 
         return events
 
-    def get_upcoming_events(self) -> List[Event]:
+    def get_upcoming_ufc_events(self) -> List[Event]:
         """
         Scrapes every upcoming UFC event from Sherdog.
         Returns a list of events.
@@ -94,11 +93,11 @@ class SherdogScraper:
             location = tr.find("td", itemprop="location").get_text(" ", strip=True)
 
             events.append(Event(
-                event_url=event_url,
-                event_title=event_title,
-                event_date=event_date,
-                event_location=location,
-                event_organizer="UFC",
+                url=event_url,
+                title=event_title,
+                date=event_date,
+                location=location,
+                organizer="UFC",
             ))
         
         return events
@@ -113,7 +112,6 @@ class SherdogScraper:
         soup = BeautifulSoup(response.text, "html.parser")
         fights = []
 
-        # Some older Sherdog pages may not have a dedicated "main event" container.
         main_event_container = soup.find("div", itemprop="subEvent")
         if main_event_container:
             fighter_1_container = main_event_container.find("div", class_="fighter left_side")
@@ -122,8 +120,8 @@ class SherdogScraper:
             fighter_1_link_rel = fighter_1_container.find("a", itemprop="url").get("href")
             fighter_2_link_rel = fighter_2_container.find("a", itemprop="url").get("href")
 
-            fighter_1_link = urljoin(self.base_url, fighter_1_link_rel)
-            fighter_2_link = urljoin(self.base_url, fighter_2_link_rel)
+            fighter_1_url = urljoin(self.base_url, fighter_1_link_rel)
+            fighter_2_url = urljoin(self.base_url, fighter_2_link_rel)
 
             fight_weight = main_event_container.find("span", class_="weight_class").text.strip()
 
@@ -142,7 +140,7 @@ class SherdogScraper:
             resume_table = main_event_container.find("table", class_="fight_card_resume")
             resume_cells = resume_table.find_all("td")
 
-            fight_idx = int(
+            match_number = int(
                 "".join(filter(str.isdigit, resume_cells[0].get_text(strip=True)))
             )
             fight_method = resume_cells[1].get_text(" ", strip=True)
@@ -156,14 +154,14 @@ class SherdogScraper:
             fights.append(
                 Fight(
                     event_url=event_url,
-                    fight_idx=fight_idx,
-                    fighter_1_link=fighter_1_link,
-                    fighter_2_link=fighter_2_link,
-                    fight_weight=fight_weight,
-                    fight_winner=fight_winner,
-                    fight_method=fight_method,
-                    fight_round=fight_round,
-                    fight_time=fight_time,
+                    fighter_1_url=fighter_1_url,
+                    fighter_2_url=fighter_2_url,
+                    match_number=match_number,
+                    weight_class=fight_weight,
+                    winner=fight_winner,
+                    method=fight_method,
+                    round=fight_round,
+                    time=fight_time,
                 )
             )
 
@@ -174,16 +172,16 @@ class SherdogScraper:
         for tr in fight_card_container.find_all("tr", itemprop="subEvent"):
             tds = tr.find_all("td")
 
-            fight_idx_text = tds[0].get_text(strip=True)
-            fight_idx_val = int(''.join(filter(str.isdigit, fight_idx_text)))
+            match_number_text = tds[0].get_text(strip=True)
+            match_number_val = int(''.join(filter(str.isdigit, match_number_text)))
 
             fighter_1_container = tds[1]
             fighter_2_container = tds[3]
 
-            fighter_1_link_rel = fighter_1_container.find("a", itemprop="url")["href"]
-            fighter_2_link_rel = fighter_2_container.find("a", itemprop="url")["href"]
-            fighter_1_link = urljoin(self.base_url, fighter_1_link_rel)
-            fighter_2_link = urljoin(self.base_url, fighter_2_link_rel)
+            fighter_1_url_rel = fighter_1_container.find("a", itemprop="url")["href"]
+            fighter_2_url_rel = fighter_2_container.find("a", itemprop="url")["href"]
+            fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
+            fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
 
             fight_weight = tds[2].find("span", class_="weight_class").text.strip()
 
@@ -209,14 +207,14 @@ class SherdogScraper:
 
             fights.append(Fight(
                 event_url=event_url,
-                fight_idx=fight_idx_val,
-                fighter_1_link=fighter_1_link,
-                fighter_2_link=fighter_2_link,
-                fight_weight=fight_weight,
-                fight_winner=fight_winner,
-                fight_method=fight_method,
-                fight_round=fight_round_val,
-                fight_time=fight_time,
+                fighter_1_url=fighter_1_url,
+                fighter_2_url=fighter_2_url,
+                match_number=match_number_val,
+                weight_class=fight_weight,
+                winner=fight_winner,
+                method=fight_method,
+                round=fight_round_val,
+                time=fight_time,
             ))
 
         return fights
@@ -236,29 +234,29 @@ class SherdogScraper:
             for tr in fight_card_container.find_all("tr", itemprop="subEvent"):
                 tds = tr.find_all("td")
 
-                fight_idx_text = tds[0].get_text(strip=True)
-                fight_idx_val = int(''.join(filter(str.isdigit, fight_idx_text)))
+                match_number_text = tds[0].get_text(strip=True)
+                match_number_val = int(''.join(filter(str.isdigit, match_number_text)))
 
                 fighter_1_container = tds[1]
                 fighter_2_container = tds[3]
 
-                fighter_1_link_rel = fighter_1_container.find("a", itemprop="url")["href"]
-                fighter_2_link_rel = fighter_2_container.find("a", itemprop="url")["href"]
-                fighter_1_link = urljoin(self.base_url, fighter_1_link_rel)
-                fighter_2_link = urljoin(self.base_url, fighter_2_link_rel)
+                fighter_1_url_rel = fighter_1_container.find("a", itemprop="url")["href"]
+                fighter_2_url_rel = fighter_2_container.find("a", itemprop="url")["href"]
+                fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
+                fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
 
                 fight_weight = tds[2].find("span", class_="weight_class").text.strip()
                 
                 fights.append(Fight(
                     event_url=event_url,
-                    fight_idx=fight_idx_val,
-                    fighter_1_link=fighter_1_link,
-                    fighter_2_link=fighter_2_link,
-                    fight_weight=fight_weight,
-                    fight_winner="",
-                    fight_method="",
-                    fight_round=0,
-                    fight_time="",
+                    fighter_1_url=fighter_1_url,
+                    fighter_2_url=fighter_2_url,
+                    match_number=match_number_val,
+                    weight_class=fight_weight,
+                    winner="",
+                    method="",
+                    round=0,
+                    time="",
                 ))
             
 
@@ -267,26 +265,77 @@ class SherdogScraper:
             fighter_1_container = main_event_container.find("div", class_="fighter left_side")
             fighter_2_container = main_event_container.find("div", class_="fighter right_side")
 
-            fighter_1_link_rel = fighter_1_container.find("a", itemprop="url").get("href")
-            fighter_2_link_rel = fighter_2_container.find("a", itemprop="url").get("href")
+            fighter_1_url_rel = fighter_1_container.find("a", itemprop="url").get("href")
+            fighter_2_url_rel = fighter_2_container.find("a", itemprop="url").get("href")
 
-            fighter_1_link = urljoin(self.base_url, fighter_1_link_rel)
-            fighter_2_link = urljoin(self.base_url, fighter_2_link_rel)
+            fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
+            fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
 
             fight_weight = main_event_container.find("span", class_="weight_class").text.strip()
 
             fights.append(
                 Fight(
                     event_url=event_url,
-                    fight_idx=len(fights) + 1,
-                    fighter_1_link=fighter_1_link,
-                    fighter_2_link=fighter_2_link,
-                    fight_weight=fight_weight,
-                    fight_winner="",
-                    fight_method="",
-                    fight_round=0,
-                    fight_time="",
+                    fighter_1_url=fighter_1_url,
+                    fighter_2_url=fighter_2_url,
+                    match_number=len(fights) + 1,
+                    weight_class=fight_weight,
+                    winner="",
+                    method="",
+                    round=0,
+                    time="",
                 )
             )
 
         return fights
+    
+    def get_fighter_stats(self, fighter_url: str):
+        """
+        Scrapes the stats for a given fighter from Sherdog.
+        Returns a Fighter object.
+        """
+        scraper = cloudscraper.create_scraper()
+        response = scraper.get(fighter_url, headers=self.headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        name = soup.find("h1", itemprop="name").text.strip()
+        nickname = soup.find("span", class_="nickname").text.strip() if soup.find("span", class_="nickname") else ""
+
+        wins = re.search(r"\d+", soup.find("div", class_="winloses win").text.strip()).group(0)
+        loses = re.search(r"\d+", soup.find("div", class_="winloses lose").text.strip()).group(0)
+        draws = re.search(r"\d+", soup.find("div", class_="winloses draw").text.strip()).group(0) if soup.find("div", class_="winloses draw") else "0"
+        no_contests = re.search(r"\d+", soup.find("div", class_="winloses nc").text.strip()).group(0) if soup.find("div", class_="winloses nc") else "0"
+        record = f"{wins}-{loses}-{draws}, {no_contests} NC"
+
+        country = soup.find("strong", itemprop="nationality").text.strip()
+        city = soup.find("span", itemprop="addressLocality", class_="locality").text.strip() if soup.find("span", itemprop="addressLocality", class_="locality") else ""
+
+        bio_holder = soup.find("div", class_="bio-holder")
+        bio_holder_trs = bio_holder.find_all("tr")
+
+        age = bio_holder_trs[0].find("b").text.strip()
+
+        dob_str = bio_holder_trs[0].find("span", itemprop="birthDate").text.strip()
+        dob = datetime.strptime(dob_str, "%b %d, %Y").date()
+        
+        height = bio_holder_trs[1].find("b", itemprop="height").text.strip()
+        print(height)
+        
+        weight_class_tag = bio_holder.select_one("div.association-class a[href*='weightclass=']")
+        weight_class = weight_class_tag.text.strip() if weight_class_tag else ""
+
+        association = bio_holder.find("span", itemprop="memberOf").text.strip()
+
+        return Fighter(
+            url=fighter_url,
+            name=name,
+            nickname=nickname,
+            record=record,
+            country=country,
+            city=city,
+            age=age,
+            dob=dob,
+            height=height,
+            weight_class=weight_class,
+            association=association,
+        )
