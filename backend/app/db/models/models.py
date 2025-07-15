@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, Integer, String, ForeignKey, DateTime, Date, Index, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
@@ -39,7 +39,7 @@ class Fighter(Base):
     weight_class = Column(String)
     association = Column(String)
 
-    fights = relationship("Fight", back_populates="fighters", cascade="all, delete-orphan")
+    predictions = relationship("Prediction", back_populates="fighter", cascade="all, delete-orphan")
 
 class Fight(Base):
     __tablename__ = "fights"
@@ -56,6 +56,8 @@ class Fight(Base):
     time = Column(String)
 
     event = relationship("Event", back_populates="fights")
+    fighter_1 = relationship("Fighter", foreign_keys=[fighter_1_id])
+    fighter_2 = relationship("Fighter", foreign_keys=[fighter_2_id])
     predictions = relationship("Prediction", back_populates="fight", cascade="all, delete-orphan")
 
 class Prediction(Base):
