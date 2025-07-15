@@ -307,24 +307,25 @@ class SherdogScraper:
         no_contests = re.search(r"\d+", soup.find("div", class_="winloses nc").text.strip()).group(0) if soup.find("div", class_="winloses nc") else "0"
         record = f"{wins}-{loses}-{draws}, {no_contests} NC"
 
-        country = soup.find("strong", itemprop="nationality").text.strip()
+        country = soup.find("strong", itemprop="nationality").text.strip() if soup.find("strong", itemprop="nationality") else ""
         city = soup.find("span", itemprop="addressLocality", class_="locality").text.strip() if soup.find("span", itemprop="addressLocality", class_="locality") else ""
 
         bio_holder = soup.find("div", class_="bio-holder")
         bio_holder_trs = bio_holder.find_all("tr")
 
-        age = bio_holder_trs[0].find("b").text.strip()
+        age = bio_holder_trs[0].find("b").text.strip() if bio_holder_trs[0].find("b") else ""
+        if age == "N/A":
+            age = 0
 
-        dob_str = bio_holder_trs[0].find("span", itemprop="birthDate").text.strip()
-        dob = datetime.strptime(dob_str, "%b %d, %Y").date()
+        dob_str = bio_holder_trs[0].find("span", itemprop="birthDate").text.strip() if bio_holder_trs[0].find("span", itemprop="birthDate") else ""
+        dob = datetime.strptime(dob_str, "%b %d, %Y").date() if dob_str else None
         
-        height = bio_holder_trs[1].find("b", itemprop="height").text.strip()
-        print(height)
+        height = bio_holder_trs[1].find("b", itemprop="height").text.strip() if bio_holder_trs[1].find("b", itemprop="height") else ""
         
         weight_class_tag = bio_holder.select_one("div.association-class a[href*='weightclass=']")
         weight_class = weight_class_tag.text.strip() if weight_class_tag else ""
 
-        association = bio_holder.find("span", itemprop="memberOf").text.strip()
+        association = bio_holder.find("span", itemprop="memberOf").text.strip() if bio_holder.find("span", itemprop="memberOf") else ""
 
         return Fighter(
             url=fighter_url,

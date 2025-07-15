@@ -1,4 +1,5 @@
 from datetime import datetime, date
+from typing import Optional
 from pydantic import BaseModel
 
 class Event(BaseModel):
@@ -16,7 +17,7 @@ class Fighter(BaseModel):
     country: str
     city: str
     age: int
-    dob: date
+    dob: Optional[date]
     height: str
     weight_class: str
     association: str
