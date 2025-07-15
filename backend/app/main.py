@@ -24,20 +24,22 @@ app.include_router(predict_routes, prefix="/predict", tags=["Predict"])
 def read_root(db: Session = Depends(get_db)):
     """Root endpoint: scrape previous UFC events and persist them."""
     sherdog_scraper = SherdogScraper()
-    previous_events = sherdog_scraper.get_previous_events()
-    upcoming_events = sherdog_scraper.get_upcoming_events()
+    # previous_events = sherdog_scraper.get_previous_events()
+    # upcoming_events = sherdog_scraper.get_upcoming_events()
 
-    # Store events in DB (idempotent operation)
-    upsert_events(previous_events, db)
-    upsert_events(upcoming_events, db)
+    # # Store events in DB (idempotent operation)
+    # upsert_events(previous_events, db)
+    # upsert_events(upcoming_events, db)
 
-    # Scrape and persist fights for each previous event
-    for event in previous_events:
-        print(f"Scraping fights for event: {event.event_title}")
-        fights = sherdog_scraper.get_previous_event_fights(event.event_url)
-        upsert_fights(fights, db)
+    # # Scrape and persist fights for each previous event
+    # for event in previous_events:
+    #     print(f"Scraping fights for event: {event.event_title}")
+    #     fights = sherdog_scraper.get_previous_event_fights(event.event_url)
+    #     upsert_fights(fights, db)
+
+    fighter_stats = sherdog_scraper.get_fighter_stats("https://www.sherdog.com/fighter/Max-Holloway-38671")
+    print(fighter_stats)
 
     return {
         "message": "API is running",
-        "events": previous_events + upcoming_events,
     }

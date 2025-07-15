@@ -5,7 +5,7 @@ from app.db.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
@@ -36,9 +36,10 @@ class Fighter(Base):
     age = Column(Integer)
     dob = Column(Date)
     height = Column(String)
-    weight = Column(String)
+    weight_class = Column(String)
     association = Column(String)
-    stats = Column(JSON) 
+
+    fights = relationship("Fight", back_populates="fighters", cascade="all, delete-orphan")
 
 class Fight(Base):
     __tablename__ = "fights"
@@ -60,7 +61,7 @@ class Fight(Base):
 class Prediction(Base):
     __tablename__ = "predictions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     fight_id = Column(Integer, ForeignKey("fights.id", ondelete="CASCADE"), nullable=False)
     fighter_id = Column(Integer, ForeignKey("fighters.id", ondelete="CASCADE"), nullable=False)

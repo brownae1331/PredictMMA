@@ -1,20 +1,33 @@
-from datetime import datetime
+from datetime import datetime, date
 from pydantic import BaseModel
 
 class Event(BaseModel):
-    event_url: str
-    event_title: str
-    event_date: datetime
-    event_location: str
-    event_organizer: str
+    url: str
+    title: str
+    date: datetime
+    location: str
+    organizer: str
+
+class Fighter(BaseModel):
+    url: str
+    name: str
+    nickname: str
+    record: str
+    country: str
+    city: str
+    age: int
+    dob: date
+    height: str
+    weight_class: str
+    association: str
 
 class Fight(BaseModel):
     event_url: str
-    fight_idx: int
-    fighter_1_link: str
-    fighter_2_link: str
-    fight_weight: str
-    fight_winner: str
-    fight_method: str
-    fight_round: int
-    fight_time: str
+    fighter_1_url: str
+    fighter_2_url: str
+    match_number: int
+    weight_class: str
+    winner: str
+    method: str
+    round: int
+    time: str 
