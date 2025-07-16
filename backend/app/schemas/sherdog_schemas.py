@@ -13,6 +13,7 @@ class Fighter(BaseModel):
     url: str
     name: str
     nickname: str
+    image_url: str
     record: str
     country: str
     city: str

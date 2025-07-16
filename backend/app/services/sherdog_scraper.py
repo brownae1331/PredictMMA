@@ -301,9 +301,11 @@ class SherdogScraper:
         name = soup.find("h1", itemprop="name").text.strip()
         nickname = soup.find("span", class_="nickname").text.strip() if soup.find("span", class_="nickname") else ""
 
+        image_url = self.base_url + soup.find("img", itemprop="image")["src"]
+
         wins = re.search(r"\d+", soup.find("div", class_="winloses win").text.strip()).group(0)
         loses = re.search(r"\d+", soup.find("div", class_="winloses lose").text.strip()).group(0)
-        draws = re.search(r"\d+", soup.find("div", class_="winloses draw").text.strip()).group(0) if soup.find("div", class_="winloses draw") else "0"
+        draws = re.search(r"\d+", soup.find("div", class_="winloses draws").text.strip()).group(0) if soup.find("div", class_="winloses draws") else "0"
         no_contests = re.search(r"\d+", soup.find("div", class_="winloses nc").text.strip()).group(0) if soup.find("div", class_="winloses nc") else "0"
         record = f"{wins}-{loses}-{draws}, {no_contests} NC"
 
@@ -331,6 +333,7 @@ class SherdogScraper:
             url=fighter_url,
             name=name,
             nickname=nickname,
+            image_url=image_url,
             record=record,
             country=country,
             city=city,
