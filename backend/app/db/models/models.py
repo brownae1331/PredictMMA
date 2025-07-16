@@ -30,6 +30,7 @@ class Fighter(Base):
     url = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)
     nickname = Column(String)
+    image_url = Column(String)
     record = Column(String)
     country = Column(String)
     city = Column(String)
