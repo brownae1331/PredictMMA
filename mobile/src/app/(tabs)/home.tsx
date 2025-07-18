@@ -1,116 +1,90 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { EventSummary, MainEvent } from '../../types/ufc_types';
-import { getEventSummaries, getEventMainEvent } from '../../lib/api/ufc_api';
-
-// Define a new type for the combined data
-interface EventWithMainEvent {
-    summary: EventSummary;
-    mainEvent: MainEvent | null;
-}
+import { HomePageMainEvent } from '../../types/sherdog_types';
+import { getHomePageMainEvents } from '../../lib/api/event_api';
 
 export default function HomeScreen() {
-    const [events, setEvents] = useState<EventWithMainEvent[]>([]);
+    const [mainEvents, setMainEvents] = useState<HomePageMainEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchEventsWithMainEvents();
+        const fetchMainEvents = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const fetchedMainEvents = await getHomePageMainEvents(3);
+                setMainEvents(fetchedMainEvents);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'An error occurred');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMainEvents();
     }, []);
 
-    const fetchEventsWithMainEvents = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const summaries = await getEventSummaries(3);
-            // Fetch main event for each summary
-            const eventsWithMain = await Promise.all(
-                summaries.map(async (summary) => {
-                    try {
-                        const mainEvent = await getEventMainEvent(summary.event_url);
-                        return { summary, mainEvent };
-                    } catch (e) {
-                        // If main event fetch fails, just set it as null
-                        return { summary, mainEvent: null };
-                    }
-                })
-            );
-            setEvents(eventsWithMain);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred');
-        } finally {
-            setLoading(false);
+    const formatFighterName = (fullName: string) => {
+        const nameParts = fullName.trim().split(' ');
+        if (nameParts.length === 1) {
+            return { firstName: nameParts[0], lastName: '' };
         }
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(' ');
+        return { firstName, lastName };
     };
 
-    const handleEventPress = (event: EventSummary) => {
-        router.push({
-            pathname: '/event-details',
-            params: {
-                eventData: JSON.stringify(event)
-            }
-        });
-    };
+    const renderEventCard = (event: HomePageMainEvent) => {
+        const fighter1Name = formatFighterName(event.fighter_1_name);
+        const fighter2Name = formatFighterName(event.fighter_2_name);
 
-    const renderMainEventCard = (main_event: MainEvent | null) => {
-        if (!main_event) return null;
-        const formatFighterName = (fullName: string) => {
-            const nameParts = fullName.trim().split(' ');
-            if (nameParts.length === 1) {
-                return { firstName: nameParts[0], lastName: '' };
-            }
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ');
-            return { firstName, lastName };
-        };
-        const fighter1Name = formatFighterName(main_event.fighter_1_name);
-        const fighter2Name = formatFighterName(main_event.fighter_2_name);
         return (
-            <View style={styles.fightCard}>
-                <View style={styles.fightersContainer}>
-                    <View style={styles.fighter}>
-                        <View style={styles.fighterImageContainer}>
-                            <Image
-                                source={{ uri: main_event.fighter_1_image }}
-                                style={styles.fighterImage}
-                                contentFit="cover"
-                                contentPosition="top"
-                            />
+            <View key={event.event_id} style={styles.eventContainer}>
+                <Text style={styles.eventTitle}>{event.event_title}</Text>
+                <Text style={styles.eventDate}>
+                    {new Date(event.event_date).toLocaleDateString()} at{' '}
+                    {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+                <View style={styles.fightCard}>
+                    <View style={styles.fightersContainer}>
+                        <View style={styles.fighter}>
+                            <View style={styles.fighterImageContainer}>
+                                {event.fighter_1_image ? (
+                                    <Image
+                                        source={{ uri: event.fighter_1_image }}
+                                        style={styles.fighterImage}
+                                        contentFit="cover"
+                                        contentPosition="top"
+                                    />
+                                ) : null}
+                            </View>
+                            <View style={styles.fighterNameContainer}>
+                                <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
+                                {fighter1Name.lastName !== '' && (
+                                    <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
+                                )}
+                            </View>
                         </View>
-                        <View style={styles.fighterNameContainer}>
-                            <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
-                            {fighter1Name.lastName !== '' && (
-                                <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
-                            )}
-                            {main_event.fighter_1_rank && (
-                                <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                                    {main_event.fighter_1_rank}
-                                </Text>
-                            )}
-                        </View>
-                    </View>
-                    <Text style={styles.vsText}>VS</Text>
-                    <View style={styles.fighter}>
-                        <View style={styles.fighterImageContainer}>
-                            <Image
-                                source={{ uri: main_event.fighter_2_image }}
-                                style={styles.fighterImage}
-                                contentFit="cover"
-                                contentPosition="top"
-                            />
-                        </View>
-                        <View style={styles.fighterNameContainer}>
-                            <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
-                            {fighter2Name.lastName !== '' && (
-                                <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
-                            )}
-                            {main_event.fighter_2_rank && (
-                                <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                                    {main_event.fighter_2_rank}
-                                </Text>
-                            )}
+                        <Text style={styles.vsText}>VS</Text>
+                        <View style={styles.fighter}>
+                            <View style={styles.fighterImageContainer}>
+                                {event.fighter_2_image ? (
+                                    <Image
+                                        source={{ uri: event.fighter_2_image }}
+                                        style={styles.fighterImage}
+                                        contentFit="cover"
+                                        contentPosition="top"
+                                    />
+                                ) : null}
+                            </View>
+                            <View style={styles.fighterNameContainer}>
+                                <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
+                                {fighter2Name.lastName !== '' && (
+                                    <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
+                                )}
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -137,27 +111,10 @@ export default function HomeScreen() {
                         <ActivityIndicator size="large" color="#000" style={styles.loader} />
                     ) : error ? (
                         <Text style={styles.errorText}>Error: {error}</Text>
-                    ) : events.length === 0 ? (
+                    ) : mainEvents.length === 0 ? (
                         <Text style={styles.noEventsText}>No upcoming events found</Text>
                     ) : (
-                        events.map(({ summary, mainEvent }, eventIndex) => (
-                            <TouchableOpacity
-                                key={eventIndex}
-                                onPress={() => handleEventPress(summary)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={styles.eventContainer}>
-                                    <Text style={styles.eventTitle} numberOfLines={1}>
-                                        {summary.event_title.split(':')[0]}
-                                    </Text>
-                                    <Text style={styles.eventDate}>
-                                        {new Date(summary.event_date).toLocaleDateString()} at {new Date(summary.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </Text>
-                                    {/* Show only the main event */}
-                                    {renderMainEventCard(mainEvent)}
-                                </View>
-                            </TouchableOpacity>
-                        ))
+                        mainEvents.map(renderEventCard)
                     )}
                 </View>
             </ScrollView>
@@ -275,10 +232,8 @@ const styles = StyleSheet.create({
     fighterImage: {
         width: 150,
         height: 150,
-        marginTop: 0,
         resizeMode: 'cover',
     },
-
     fighterNameContainer: {
         alignItems: 'center',
         minHeight: 40,
@@ -302,5 +257,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#666',
         marginHorizontal: 20,
+        marginTop: -26, // Shift upward to align with image center
     },
 });

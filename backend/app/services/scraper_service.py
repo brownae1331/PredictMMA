@@ -70,6 +70,7 @@ def scrape_ufc_data(db: Session) -> None:
             url=fighter_data.url,
             name=fighter_data.name,
             nickname=fighter_data.nickname,
+            image_url=fighter_data.image_url,
             record=fighter_data.record,
             country=fighter_data.country,
             city=fighter_data.city,
