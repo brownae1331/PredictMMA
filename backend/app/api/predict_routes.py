@@ -3,7 +3,6 @@ from app.schemas.predict_schemas import Prediction as PredictionSchema
 from app.db.database import db_dependency
 from app.db.models import models
 from sqlalchemy.exc import IntegrityError
-from typing import List
 
 router = APIRouter()
 

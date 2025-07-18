@@ -14,6 +14,14 @@ class SherdogScraper:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         }
 
+    @staticmethod
+    def _is_valid_href(href: str) -> bool:
+        """Return True if the href looks like a real link to a fighter profile."""
+        if not href:
+            return False
+        # Sherdog uses `javascript:void();` when the fighter is TBD / TBA
+        return not href.strip().lower().startswith("javascript:")
+
     def get_previous_ufc_events(self) -> List[Event]:
         """
         Scrapes every previous UFC event from Sherdog.
@@ -120,50 +128,56 @@ class SherdogScraper:
             fighter_1_link_rel = fighter_1_container.find("a", itemprop="url").get("href")
             fighter_2_link_rel = fighter_2_container.find("a", itemprop="url").get("href")
 
-            fighter_1_url = urljoin(self.base_url, fighter_1_link_rel)
-            fighter_2_url = urljoin(self.base_url, fighter_2_link_rel)
+            # Skip fights where either fighter does not yet have a Sherdog profile link
+            if not (self._is_valid_href(fighter_1_link_rel) and self._is_valid_href(fighter_2_link_rel)):
+                # Incomplete bout information (e.g., TBD fighter) – ignore
+                fighter_1_link_rel = fighter_2_link_rel = None
 
-            fight_weight = main_event_container.find("span", class_="weight_class").text.strip()
+            if fighter_1_link_rel and fighter_2_link_rel:
+                fighter_1_url = urljoin(self.base_url, fighter_1_link_rel)
+                fighter_2_url = urljoin(self.base_url, fighter_2_link_rel)
 
-            if fighter_1_container.find("span", class_="final_result win"):
-                fight_winner = "fighter_1"
-            elif fighter_2_container.find("span", class_="final_result win"):
-                fight_winner = "fighter_2"
-            elif (
-                fighter_1_container.find("span", class_="final_result no_contest")
-                or fighter_2_container.find("span", class_="final_result no_contest")
-            ):
-                fight_winner = "no contest"
-            else:
-                fight_winner = "draw"
+                fight_weight = main_event_container.find("span", class_="weight_class").text.strip()
 
-            resume_table = main_event_container.find("table", class_="fight_card_resume")
-            resume_cells = resume_table.find_all("td")
+                if fighter_1_container.find("span", class_="final_result win"):
+                    fight_winner = "fighter_1"
+                elif fighter_2_container.find("span", class_="final_result win"):
+                    fight_winner = "fighter_2"
+                elif (
+                    fighter_1_container.find("span", class_="final_result no_contest")
+                    or fighter_2_container.find("span", class_="final_result no_contest")
+                ):
+                    fight_winner = "no contest"
+                else:
+                    fight_winner = "draw"
 
-            match_number = int(
-                "".join(filter(str.isdigit, resume_cells[0].get_text(strip=True)))
-            )
-            fight_method = resume_cells[1].get_text(" ", strip=True)
-            fight_round = int(
-                "".join(filter(str.isdigit, resume_cells[3].get_text(strip=True)))
-            )
-            raw_time = resume_cells[4].get_text(strip=True)
-            time_match = re.search(r"\d{1,2}:\d{2}", raw_time)
-            fight_time = time_match.group(0) if time_match else ""
+                resume_table = main_event_container.find("table", class_="fight_card_resume")
+                resume_cells = resume_table.find_all("td")
 
-            fights.append(
-                Fight(
-                    event_url=event_url,
-                    fighter_1_url=fighter_1_url,
-                    fighter_2_url=fighter_2_url,
-                    match_number=match_number,
-                    weight_class=fight_weight,
-                    winner=fight_winner,
-                    method=fight_method,
-                    round=fight_round,
-                    time=fight_time,
+                match_number = int(
+                    "".join(filter(str.isdigit, resume_cells[0].get_text(strip=True)))
                 )
-            )
+                fight_method = resume_cells[1].get_text(" ", strip=True)
+                fight_round = int(
+                    "".join(filter(str.isdigit, resume_cells[3].get_text(strip=True)))
+                )
+                raw_time = resume_cells[4].get_text(strip=True)
+                time_match = re.search(r"\d{1,2}:\d{2}", raw_time)
+                fight_time = time_match.group(0) if time_match else ""
+
+                fights.append(
+                    Fight(
+                        event_url=event_url,
+                        fighter_1_url=fighter_1_url,
+                        fighter_2_url=fighter_2_url,
+                        match_number=match_number,
+                        weight_class=fight_weight,
+                        winner=fight_winner,
+                        method=fight_method,
+                        round=fight_round,
+                        time=fight_time,
+                    )
+                )
 
         fight_card_container = soup.find("div", class_="new_table_holder")
         if not fight_card_container:
@@ -180,6 +194,11 @@ class SherdogScraper:
 
             fighter_1_url_rel = fighter_1_container.find("a", itemprop="url")["href"]
             fighter_2_url_rel = fighter_2_container.find("a", itemprop="url")["href"]
+
+            # Skip incomplete fights lacking proper fighter links
+            if not (self._is_valid_href(fighter_1_url_rel) and self._is_valid_href(fighter_2_url_rel)):
+                continue
+
             fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
             fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
 
@@ -242,11 +261,16 @@ class SherdogScraper:
 
                 fighter_1_url_rel = fighter_1_container.find("a", itemprop="url")["href"]
                 fighter_2_url_rel = fighter_2_container.find("a", itemprop="url")["href"]
+
+                # Skip bouts that don't yet list both fighters
+                if not (self._is_valid_href(fighter_1_url_rel) and self._is_valid_href(fighter_2_url_rel)):
+                    continue
+
                 fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
                 fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
 
                 fight_weight = tds[2].find("span", class_="weight_class").text.strip()
-                
+
                 fights.append(Fight(
                     event_url=event_url,
                     fighter_1_url=fighter_1_url,
@@ -258,7 +282,7 @@ class SherdogScraper:
                     round=0,
                     time="",
                 ))
-            
+
 
         main_event_container = soup.find("div", itemprop="subEvent")
         if main_event_container:
@@ -268,24 +292,29 @@ class SherdogScraper:
             fighter_1_url_rel = fighter_1_container.find("a", itemprop="url").get("href")
             fighter_2_url_rel = fighter_2_container.find("a", itemprop="url").get("href")
 
-            fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
-            fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
+            # Ignore main events where fighters are not yet announced
+            if not (self._is_valid_href(fighter_1_url_rel) and self._is_valid_href(fighter_2_url_rel)):
+                # Skip adding a placeholder fight
+                pass
+            else:
+                fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
+                fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
 
-            fight_weight = main_event_container.find("span", class_="weight_class").text.strip()
+                fight_weight = main_event_container.find("span", class_="weight_class").text.strip()
 
-            fights.append(
-                Fight(
-                    event_url=event_url,
-                    fighter_1_url=fighter_1_url,
-                    fighter_2_url=fighter_2_url,
-                    match_number=len(fights) + 1,
-                    weight_class=fight_weight,
-                    winner="",
-                    method="",
-                    round=0,
-                    time="",
+                fights.append(
+                    Fight(
+                        event_url=event_url,
+                        fighter_1_url=fighter_1_url,
+                        fighter_2_url=fighter_2_url,
+                        match_number=len(fights) + 1,
+                        weight_class=fight_weight,
+                        winner="",
+                        method="",
+                        round=0,
+                        time="",
+                    )
                 )
-            )
 
         return fights
     

@@ -1,5 +1,4 @@
 from datetime import datetime, date
-from typing import Optional
 from pydantic import BaseModel
 
 class Event(BaseModel):
@@ -18,7 +17,7 @@ class Fighter(BaseModel):
     country: str
     city: str
     age: int
-    dob: Optional[date]
+    dob: date | None
     height: str
     weight_class: str
     association: str
@@ -32,4 +31,4 @@ class Fight(BaseModel):
     winner: str
     method: str
     round: int
-    time: str 
+    time: str
