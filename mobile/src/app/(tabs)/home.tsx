@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { HomePageMainEvent } from '../../types/sherdog_types';
+import { HomePageMainEvent } from '../../types/event_types';
 import { getHomePageMainEvents } from '../../lib/api/event_api';
 
 export default function HomeScreen() {
@@ -10,21 +10,21 @@ export default function HomeScreen() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchMainEvents = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const fetchedMainEvents = await getHomePageMainEvents(3);
-                setMainEvents(fetchedMainEvents);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'An error occurred');
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchMainEvents();
     }, []);
+
+    const fetchMainEvents = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const fetchedMainEvents = await getHomePageMainEvents(3);
+            setMainEvents(fetchedMainEvents);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const formatFighterName = (fullName: string) => {
         const nameParts = fullName.trim().split(' ');
@@ -65,6 +65,9 @@ export default function HomeScreen() {
                                 {fighter1Name.lastName !== '' && (
                                     <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
                                 )}
+                                {event.fighter_1_ranking && (
+                                    <Text style={styles.fighterRank}>{'#' + event.fighter_1_ranking}</Text>
+                                )}
                             </View>
                         </View>
                         <Text style={styles.vsText}>VS</Text>
@@ -83,6 +86,9 @@ export default function HomeScreen() {
                                 <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
                                 {fighter2Name.lastName !== '' && (
                                     <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
+                                )}
+                                {event.fighter_2_ranking && (
+                                    <Text style={styles.fighterRank}>{'#' + event.fighter_2_ranking}</Text>
                                 )}
                             </View>
                         </View>
@@ -251,6 +257,13 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingHorizontal: 4,
         marginTop: 2,
+    },
+    fighterRank: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 2,
+        fontWeight: '600',
+        textAlign: 'center',
     },
     vsText: {
         fontSize: 24,

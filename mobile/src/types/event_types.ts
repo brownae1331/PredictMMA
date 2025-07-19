@@ -13,3 +13,12 @@ export interface HomePageMainEvent {
     fighter_1_ranking: string | null;
     fighter_2_ranking: string | null;
 }
+
+export interface Event {
+    id: number;
+    title: string;
+    date: Date;
+    location: string;
+    location_flag: string;
+    organizer: string;
+}

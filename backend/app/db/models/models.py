@@ -41,6 +41,10 @@ class Fighter(Base):
     weight_class = Column(String)
     association = Column(String)
 
+    __table_args__ = (
+        UniqueConstraint("name", "weight_class", name="uix_name_weight_class"),
+    )
+
     predictions = relationship("Prediction", back_populates="fighter", cascade="all, delete-orphan")
 
 class Fight(Base):
