@@ -14,6 +14,7 @@ class Fighter(BaseModel):
     nickname: str
     image_url: str
     record: str
+    ranking: str
     country: str
     city: str
     age: int

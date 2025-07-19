@@ -1,8 +1,10 @@
 from typing import List
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.services.sherdog_scraper import SherdogScraper
+from app.services.ufc_ranking_scraper import UFCRankingScraper
 from app.db.models.models import Event as EventModel, Fight as FightModel, Fighter as FighterModel
 from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSchema, Fighter as FighterSchema
 
@@ -148,6 +150,9 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
 
     db.commit()
 
+    # 3) RANKINGS ──────────────────────────────────────────────────────────
+    _update_fighter_rankings(db)
+
 
 def _upsert_fights(
     db: Session,
@@ -182,4 +187,31 @@ def _upsert_fights(
         db.add(db_fight)
         print(f"      ✓ Added fight #{fight.match_number}: {fighter_1_row.name} vs {fighter_2_row.name}")
     # Flush but not commit inside the loop to avoid excessive commits
-    db.flush() 
+    db.flush()
+
+
+def _update_fighter_rankings(db: Session) -> None:
+    """Fetch current UFC rankings and update Fighter rows accordingly."""
+    print("\nFetching current UFC rankings …")
+    ranking_scraper = UFCRankingScraper()
+    rankings_dict = ranking_scraper.get_ufc_rankings()
+
+    print("Persisting fighter rankings to DB …")
+    updated = 0
+
+    for weight_class, ranked_fighters in rankings_dict.items():
+        for name, rank in ranked_fighters:
+            # Match on fighter name (case-insensitive) and weight class (substring match to cope with "Women's" prefix)
+            fighter_row = (
+                db.query(FighterModel)
+                .filter(func.lower(FighterModel.name) == name.lower())
+                .filter(FighterModel.weight_class.ilike(f"%{weight_class}%"))
+                .first()
+            )
+
+            if fighter_row:
+                fighter_row.ranking = rank
+                updated += 1
+
+    db.commit()
+    print(f"  ✓ Updated rankings for {updated} fighters.") 

@@ -32,6 +32,7 @@ class Fighter(Base):
     nickname = Column(String)
     image_url = Column(String)
     record = Column(String)
+    ranking = Column(String)
     country = Column(String)
     city = Column(String)
     age = Column(Integer)

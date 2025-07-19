@@ -10,4 +10,6 @@ export interface HomePageMainEvent {
     fighter_2_nickname: string | null;
     fighter_1_image: string | null;
     fighter_2_image: string | null;
+    fighter_1_ranking: string | null;
+    fighter_2_ranking: string | null;
 }

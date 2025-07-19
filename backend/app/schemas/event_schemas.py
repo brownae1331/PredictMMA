@@ -13,3 +13,5 @@ class MainEvent(BaseModel):
     fighter_2_nickname: str | None
     fighter_1_image: str | None
     fighter_2_image: str | None
+    fighter_1_ranking: str | None
+    fighter_2_ranking: str | None
