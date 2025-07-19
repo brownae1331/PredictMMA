@@ -1,24 +1,40 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, ListRenderItem } from 'react-native';
 import { Image } from 'expo-image';
 import { Event } from '../../types/event_types';
-import { getUpcomingEvents } from '../../lib/api/event_api';
+import { getUpcomingEvents, getPastEvents } from '../../lib/api/event_api';
 
 export default function EventsScreen() {
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [filter, setFilter] = useState<'upcoming' | 'past'>('upcoming');
+    const [page, setPage] = useState(0);
+    const PAGE_SIZE = 10;
 
     useEffect(() => {
-        fetchUpcomingEvents();
-    }, []);
+        setEvents([]);
+        setPage(0);
+        fetchEvents(true, 0);
+    }, [filter]);
 
-    const fetchUpcomingEvents = async () => {
+    const fetchEvents = async (reset: boolean = false, requestedOffset: number = 0) => {
         try {
             setLoading(true);
             setError(null);
-            const events = await getUpcomingEvents();
-            setEvents(events);
+
+            let eventsData: Event[] = [];
+            if (filter === 'upcoming') {
+                eventsData = await getUpcomingEvents(requestedOffset, PAGE_SIZE);
+            } else {
+                eventsData = await getPastEvents(requestedOffset, PAGE_SIZE);
+            }
+
+            if (!reset) {
+                setEvents((prev) => [...prev, ...eventsData]);
+            } else {
+                setEvents(eventsData);
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
@@ -26,9 +42,9 @@ export default function EventsScreen() {
         }
     };
 
-    const renderEventCard = (event: Event, index: number) => {
+    const renderEventCard: ListRenderItem<Event> = ({ item: event, index }) => {
         return (
-            <View key={event.id ?? index}>
+            <View>
                 <View style={styles.eventCard}>
                     <View style={styles.eventHeader}>
                         <Text style={styles.eventTitle}>{event.title}</Text>
@@ -68,6 +84,14 @@ export default function EventsScreen() {
         );
     };
 
+    const loadMoreEvents = async () => {
+        if (loading) return;
+        const nextPage = page + 1;
+        const newOffset = nextPage * PAGE_SIZE;
+        setPage(nextPage);
+        await fetchEvents(false, newOffset);
+    };
+
     return (
         <View style={styles.container}>
             {/* Header Banner */}
@@ -75,24 +99,48 @@ export default function EventsScreen() {
                 <View style={styles.headerContent}>
                     <Text style={styles.headerText}>Events</Text>
                 </View>
+                <View style={styles.filterContainer}>
+                    <TouchableOpacity
+                        onPress={() => setFilter('upcoming')}
+                        style={[styles.filterButton, filter === 'upcoming' && styles.activeFilterButton]}
+                    >
+                        <Text style={[styles.filterButtonText, filter === 'upcoming' && styles.activeFilterText]}>Upcoming</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setFilter('past')}
+                        style={[styles.filterButton, filter === 'past' && styles.activeFilterButton]}
+                    >
+                        <Text style={[styles.filterButtonText, filter === 'past' && styles.activeFilterText]}>Past</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            {/* Scrollable Content */}
-            <ScrollView style={styles.scrollView}>
-                <View style={styles.mainContent}>
-                    <Text style={styles.welcomeTitle}>Upcoming UFC Events</Text>
-
-                    {loading ? (
+            {/* Content */}
+            <FlatList
+                data={events}
+                keyExtractor={(item, index) => (item.id ? item.id.toString() : index.toString())}
+                renderItem={renderEventCard}
+                contentContainerStyle={styles.mainContent}
+                ListHeaderComponent={() => (
+                    <Text style={styles.welcomeTitle}>
+                        {filter === 'upcoming' ? 'Upcoming UFC Events' : 'Past UFC Events'}
+                    </Text>
+                )}
+                ListEmptyComponent={() => (
+                    loading ? (
                         <ActivityIndicator size="large" color="#000" style={styles.loader} />
                     ) : error ? (
                         <Text style={styles.errorText}>Error: {error}</Text>
-                    ) : events.length === 0 ? (
-                        <Text style={styles.noEventsText}>No upcoming events found</Text>
                     ) : (
-                        events.map((event, eventIndex) => renderEventCard(event, eventIndex))
-                    )}
-                </View>
-            </ScrollView>
+                        <Text style={styles.noEventsText}>No events found</Text>
+                    )
+                )}
+                ListFooterComponent={() => (
+                    loading && events.length > 0 ? <ActivityIndicator size="small" color="#000" style={styles.loader} /> : null
+                )}
+                onEndReached={loadMoreEvents}
+                onEndReachedThreshold={0.5}
+            />
         </View>
     );
 }
@@ -210,5 +258,28 @@ const styles = StyleSheet.create({
         backgroundColor: '#e0e0e0',
         marginVertical: 12,
         marginHorizontal: 0,
+    },
+    // New styles for filter toggle
+    filterContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 10,
+    },
+    filterButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: '#e0e0e0',
+        marginHorizontal: 5,
+    },
+    activeFilterButton: {
+        backgroundColor: '#333',
+    },
+    filterButtonText: {
+        color: '#333',
+        fontWeight: '600',
+    },
+    activeFilterText: {
+        color: '#fff',
     },
 }); 

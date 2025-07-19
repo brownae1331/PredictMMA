@@ -11,21 +11,42 @@ def _get_flag_image_url(location: str) -> str:
     """
     Finds a flag image from the location string using flagcdn.com.
     """
+    SPECIAL_CASES = {
+        "England": "gb-eng",
+        "Scotland": "gb-sct",
+        "Wales": "gb-wls",
+        "Northern Ireland": "gb-nir",
+        "Russia": "ru",
+    }
+
     country_name = location.split(",")[-1].strip()
     country = pycountry.countries.get(name=country_name)
     country_code = country.alpha_2 if country else ""
 
+    if country_name in SPECIAL_CASES:
+        country_code = SPECIAL_CASES[country_name]
+
     if not country_code:
-        raise HTTPException(status_code=404, detail="No flag found for this location")
+        return ""
 
     return f"https://flagcdn.com/w320/{country_code.lower()}.png"
 
 
 @router.get("/upcoming")
-def get_upcoming_events(db: db_dependency) -> list[Event]:
-    """Return all the upcoming events from the database."""
+def get_upcoming_events(db: db_dependency, offset: int = 0, limit: int = 10) -> list[Event]:
+    """Return a paginated list of upcoming events from the database."""
 
-    db_events = db.query(models.Event).filter(models.Event.date >= datetime.now()).all()
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="Limit must be greater than 0")
+
+    db_events = (
+        db.query(models.Event)
+        .filter(models.Event.date >= datetime.now())
+        .order_by(models.Event.date)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     if not db_events:
         raise HTTPException(status_code=404, detail="No upcoming events found")
@@ -40,10 +61,20 @@ def get_upcoming_events(db: db_dependency) -> list[Event]:
     ) for event in db_events]
 
 @router.get("/past")
-def get_past_events(db: db_dependency) -> list[Event]:
-    """Return all the past events from the database."""
+def get_past_events(db: db_dependency, offset: int = 0, limit: int = 10) -> list[Event]:
+    """Return a paginated list of past events from the database."""
 
-    db_events = db.query(models.Event).filter(models.Event.date < datetime.now()).all()
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="Limit must be greater than 0")
+
+    db_events = (
+        db.query(models.Event)
+        .filter(models.Event.date < datetime.now())
+        .order_by(models.Event.date.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     if not db_events:
         raise HTTPException(status_code=404, detail="No past events found")
