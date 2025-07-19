@@ -1,14 +1,28 @@
 from fastapi import APIRouter, HTTPException
 from app.db.database import db_dependency
 from app.db.models import models
-from app.schemas.sherdog_schemas import Event as EventSchema
-from app.schemas.event_schemas import MainEvent
+from app.schemas.event_schemas import Event, MainEvent
 from datetime import datetime
+import pycountry
 
 router = APIRouter()
 
+def _get_flag_image_url(location: str) -> str:
+    """
+    Finds a flag image from the location string using flagcdn.com.
+    """
+    country_name = location.split(",")[-1].strip()
+    country = pycountry.countries.get(name=country_name)
+    country_code = country.alpha_2 if country else ""
+
+    if not country_code:
+        raise HTTPException(status_code=404, detail="No flag found for this location")
+
+    return f"https://flagcdn.com/w320/{country_code.lower()}.png"
+
+
 @router.get("/upcoming")
-def get_upcoming_events(db: db_dependency) -> list[EventSchema]:
+def get_upcoming_events(db: db_dependency) -> list[Event]:
     """Return all the upcoming events from the database."""
 
     db_events = db.query(models.Event).filter(models.Event.date >= datetime.now()).all()
@@ -16,16 +30,17 @@ def get_upcoming_events(db: db_dependency) -> list[EventSchema]:
     if not db_events:
         raise HTTPException(status_code=404, detail="No upcoming events found")
 
-    return [EventSchema(
-        url=event.url,
+    return [Event(
+        id=event.id,
         title=event.title,
         date=event.date,
         location=event.location,
+        location_flag=_get_flag_image_url(event.location),
         organizer=event.organizer,
     ) for event in db_events]
 
 @router.get("/past")
-def get_past_events(db: db_dependency) -> list[EventSchema]:
+def get_past_events(db: db_dependency) -> list[Event]:
     """Return all the past events from the database."""
 
     db_events = db.query(models.Event).filter(models.Event.date < datetime.now()).all()
@@ -33,11 +48,12 @@ def get_past_events(db: db_dependency) -> list[EventSchema]:
     if not db_events:
         raise HTTPException(status_code=404, detail="No past events found")
 
-    return [EventSchema(
-        url=event.url,
+    return [Event(
+        id=event.id,
         title=event.title,
         date=event.date,
         location=event.location,
+        location_flag=_get_flag_image_url(event.location),
         organizer=event.organizer,
     ) for event in db_events]
 
@@ -98,6 +114,8 @@ def get_main_events(db: db_dependency, limit: int = 3) -> list[MainEvent]:
             fighter_2_nickname=main_event_fighter_2.nickname,
             fighter_1_image=main_event_fighter_1.image_url,
             fighter_2_image=main_event_fighter_2.image_url,
+            fighter_1_ranking=main_event_fighter_1.ranking,
+            fighter_2_ranking=main_event_fighter_2.ranking,
         ))
 
     return main_events

@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { Event } from '../../types/ufc_types';
-import { getEvents } from '../../lib/api/ufc_api';
+import { Event } from '../../types/event_types';
+import { getUpcomingEvents } from '../../lib/api/event_api';
 
 export default function EventsScreen() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -16,42 +15,26 @@ export default function EventsScreen() {
 
     const fetchUpcomingEvents = async () => {
         try {
-            console.log('Fetching upcoming events...');
-            const data = await getEvents();
-            console.log('Received data:', data);
-            setEvents(data as unknown as Event[]);
+            setLoading(true);
+            setError(null);
+            const events = await getUpcomingEvents();
+            setEvents(events);
         } catch (err) {
-            console.error('Fetch error:', err);
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleEventPress = (event: Event) => {
-        router.push({
-            pathname: '/event-details',
-            params: {
-                eventData: JSON.stringify(event)
-            }
-        });
-    };
-
     const renderEventCard = (event: Event, index: number) => {
-        console.log('Event flag URL:', event.event_location_flag);
-
         return (
-            <TouchableOpacity
-                key={index}
-                onPress={() => handleEventPress(event)}
-                activeOpacity={0.7}
-            >
+            <View key={event.id ?? index}>
                 <View style={styles.eventCard}>
                     <View style={styles.eventHeader}>
-                        <Text style={styles.eventTitle}>{event.event_title}</Text>
-                        {event.event_location_flag && (
+                        <Text style={styles.eventTitle}>{event.title}</Text>
+                        {event.location_flag && (
                             <Image
-                                source={{ uri: event.event_location_flag }}
+                                source={{ uri: event.location_flag }}
                                 style={styles.flagImage}
                                 contentFit="contain"
                                 onError={(error) => console.log('Flag image error:', error)}
@@ -63,25 +46,25 @@ export default function EventsScreen() {
                         <View style={styles.detailRow}>
                             <Text style={styles.detailLabel}>Date & Time:</Text>
                             <Text style={styles.detailValue}>
-                                {new Date(event.event_date).toLocaleDateString()} at {new Date(event.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(event.date).toLocaleDateString()} at {new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Text>
                         </View>
 
                         <View style={styles.detailRow}>
-                            <Text style={styles.detailLabel}>Arena:</Text>
-                            <Text style={styles.detailValue}>{event.event_venue}</Text>
+                            <Text style={styles.detailLabel}>Organizer:</Text>
+                            <Text style={styles.detailValue}>{event.organizer}</Text>
                         </View>
 
                         <View style={styles.detailRow}>
                             <Text style={styles.detailLabel}>Location:</Text>
-                            <Text style={styles.detailValue}>{event.event_location}</Text>
+                            <Text style={styles.detailValue}>{event.location}</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Separator line between events */}
                 {index < events.length - 1 && <View style={styles.separator} />}
-            </TouchableOpacity>
+            </View>
         );
     };
 

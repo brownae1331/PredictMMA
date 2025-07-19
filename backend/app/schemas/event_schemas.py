@@ -1,6 +1,14 @@
 from pydantic import BaseModel
 from datetime import datetime
 
+class Event(BaseModel):
+    id: int
+    title: str
+    date: datetime
+    location: str
+    location_flag: str
+    organizer: str
+
 class MainEvent(BaseModel):
     event_id: int
     event_title: str
