@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, 
 import { Image } from 'expo-image';
 import { Event } from '../../types/event_types';
 import { getUpcomingEvents, getPastEvents } from '../../lib/api/event_api';
+import { router } from 'expo-router';
 
 export default function EventsScreen() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -42,9 +43,18 @@ export default function EventsScreen() {
         }
     };
 
+    const handleEventPress = (event_id: number) => {
+        router.push({
+            pathname: '/event-fights',
+            params: {
+                event_id: event_id
+            }
+        });
+    };
+
     const renderEventCard: ListRenderItem<Event> = ({ item: event, index }) => {
         return (
-            <View>
+            <TouchableOpacity key={event.id} onPress={() => handleEventPress(event.id)}>
                 <View style={styles.eventCard}>
                     <View style={styles.eventHeader}>
                         <Text style={styles.eventTitle}>{event.title}</Text>
@@ -80,7 +90,7 @@ export default function EventsScreen() {
 
                 {/* Separator line between events */}
                 {index < events.length - 1 && <View style={styles.separator} />}
-            </View>
+            </TouchableOpacity>
         );
     };
 
