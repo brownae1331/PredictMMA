@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { HomePageMainEvent } from '../../types/event_types';
 import { getHomePageMainEvents } from '../../lib/api/event_api';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
     const [mainEvents, setMainEvents] = useState<HomePageMainEvent[]>([]);
@@ -36,12 +37,21 @@ export default function HomeScreen() {
         return { firstName, lastName };
     };
 
+    const handleMainEventPress = (event_id: number) => {
+        router.push({
+            pathname: '/event-fights',
+            params: {
+                event_id: event_id
+            }
+        });
+    };
+
     const renderEventCard = (event: HomePageMainEvent) => {
         const fighter1Name = formatFighterName(event.fighter_1_name);
         const fighter2Name = formatFighterName(event.fighter_2_name);
 
         return (
-            <View key={event.event_id} style={styles.eventContainer}>
+            <TouchableOpacity key={event.event_id} style={styles.eventContainer} onPress={() => handleMainEventPress(event.event_id)}>
                 <Text style={styles.eventTitle}>{event.event_title}</Text>
                 <Text style={styles.eventDate}>
                     {new Date(event.event_date).toLocaleDateString()} at{' '}
@@ -94,7 +104,7 @@ export default function HomeScreen() {
                         </View>
                     </View>
                 </View>
-            </View>
+            </TouchableOpacity>
         );
     };
 
