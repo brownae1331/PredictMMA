@@ -137,6 +137,7 @@ def get_main_events(db: db_dependency, limit: int = 3) -> list[MainEvent]:
             event_id=event.id,
             event_title=event.title,
             event_date=event.date,
+            fight_id=main_event_fight.id,
             fighter_1_id=main_event_fighter_1.id,
             fighter_2_id=main_event_fighter_2.id,
             fighter_1_name=main_event_fighter_1.name,

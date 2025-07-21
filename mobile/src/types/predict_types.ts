@@ -1,9 +1,22 @@
-export interface Prediction {
+export enum Method {
+    KO = "KO",
+    SUBMISSION = "SUBMISSION",
+    DECISION = "DECISION",
+}
+
+export interface PredictionCreate {
     user_id: number;
-    event_url: string;
-    fight_id: string;
-    fight_idx: number;
-    fighter_prediction: string;
-    method_prediction: string;
-    round_prediction: number | null;
+    fight_id: number;
+    fighter_id: number;
+    method: Method;
+    round: number | null;
+}
+
+export interface PredictionOut {
+    event_title: string;
+    fighter_1_name: string;
+    fighter_2_name: string;
+    winner: number;
+    method: Method;
+    round: number | null;
 }

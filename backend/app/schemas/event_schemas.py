@@ -13,6 +13,7 @@ class MainEvent(BaseModel):
     event_id: int
     event_title: str
     event_date: datetime
+    fight_id: int
     fighter_1_id: int
     fighter_2_id: int
     fighter_1_name: str

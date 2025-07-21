@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
 class Fight(BaseModel):
+    id: int
     fighter_1_id: int
     fighter_2_id: int
     fighter_1_name: str
@@ -11,7 +12,6 @@ class Fight(BaseModel):
     fighter_2_ranking: str | None
     fighter_1_flag: str
     fighter_2_flag: str
-    match_number: int
     weight_class: str
     winner: str
     method: str

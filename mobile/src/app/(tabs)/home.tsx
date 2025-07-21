@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { HomePageMainEvent } from '../../types/event_types';
 import { getHomePageMainEvents } from '../../lib/api/event_api';
 import { router } from 'expo-router';
+import { formatFighterName } from '../../lib/uiUtils';
 
 export default function HomeScreen() {
     const [mainEvents, setMainEvents] = useState<HomePageMainEvent[]>([]);
@@ -25,16 +26,6 @@ export default function HomeScreen() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const formatFighterName = (fullName: string) => {
-        const nameParts = fullName.trim().split(' ');
-        if (nameParts.length === 1) {
-            return { firstName: nameParts[0], lastName: '' };
-        }
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ');
-        return { firstName, lastName };
     };
 
     const handleMainEventPress = (event_id: number) => {

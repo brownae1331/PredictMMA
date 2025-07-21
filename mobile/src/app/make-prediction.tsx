@@ -1,120 +1,120 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Fight } from '../types/ufc_types';
 import { jwtDecode } from 'jwt-decode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createPrediction, getPrediction } from '../lib/api/predict_api';
+import { getFightById } from '../lib/api/fight_api';
+import { Method, PredictionOut } from '../types/predict_types';
+import { Fight } from '../types/fight_types';
+import { formatFighterName } from '../lib/uiUtils';
 
 export default function MakePredictionScreen() {
-    const { fightData } = useLocalSearchParams();
-    const fight: Fight = JSON.parse(fightData as string);
-    const fightId = `${fight.fighter_1_name} vs. ${fight.fighter_2_name}`;
-    const [selectedFighter, setSelectedFighter] = useState<string | null>(null);
+    const [prediction, setPrediction] = useState<PredictionOut | null>(null);
+    const [fight, setFight] = useState<Fight | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const [selectedFighter, setSelectedFighter] = useState<number | null>(null);
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
     const [selectedRound, setSelectedRound] = useState<number | null>(null);
 
+    const { fight_id } = useLocalSearchParams();
+
     useEffect(() => {
-        const fetchExistingPrediction = async () => {
-            try {
-                const token = await AsyncStorage.getItem('access_token');
-                if (!token) return;
+        // fetchExistingPrediction();
+        fetchFight();
+    }, [fight_id]);
 
-                const decoded: any = jwtDecode(token);
-                if (!decoded || !decoded.sub) return;
-
-                const user_id = decoded.sub as number;
-
-                const existingPrediction = await getPrediction(
-                    user_id,
-                    fight.event_url,
-                    fightId,
-                    token ?? undefined,
-                );
-
-                if (existingPrediction) {
-                    setSelectedFighter(existingPrediction.fighter_prediction);
-                    setSelectedMethod(existingPrediction.method_prediction);
-                    setSelectedRound(existingPrediction.round_prediction);
-                }
-            } catch (error) {
-                console.error('Error fetching existing prediction:', error);
-            }
-        };
-
-        fetchExistingPrediction();
-    }, []);
-
-    const formatFighterName = (fullName: string) => {
-        const nameParts = fullName.trim().split(' ');
-        if (nameParts.length === 1) {
-            return { firstName: nameParts[0], lastName: '' };
-        }
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ');
-        return { firstName, lastName };
-    };
-
-    const fighter1Name = formatFighterName(fight.fighter_1_name);
-    const fighter2Name = formatFighterName(fight.fighter_2_name);
-
-    // Handle submit action (placeholder for now)
-    const handleSubmit = async () => {
+    const fetchExistingPrediction = async () => {
         try {
+            setLoading(true);
+            setError(null);
+
             const token = await AsyncStorage.getItem('access_token');
+            if (!token) return;
 
-            let user_id: number | null = null;
-            if (token) {
-                const decoded: any = jwtDecode(token);
-                if (decoded && decoded.sub) {
-                    user_id = decoded.sub as number;
-                }
+            const decoded: any = jwtDecode(token);
+            if (!decoded || !decoded.sub) return;
+
+            const user_id = decoded.sub as number;
+
+            const existingPrediction = await getPrediction(user_id, Number(fight_id));
+
+            if (existingPrediction) {
+                setPrediction(existingPrediction);
             }
-
-            if (!user_id || !selectedFighter || !selectedMethod) {
-                console.warn('Prediction data is incomplete.');
-                return;
-            }
-
-            await createPrediction({
-                user_id: user_id,
-                event_url: fight.event_url,
-                fight_id: fightId,
-                fight_idx: fight.fight_idx,
-                fighter_prediction: selectedFighter,
-                method_prediction: selectedMethod,
-                round_prediction: selectedRound,
-            }, token ?? undefined);
-
-            router.back();
         } catch (error) {
-            console.error('Error submitting prediction:', error);
+            setError(error instanceof Error ? error.message : 'An error occurred');
+        } finally {
+            setLoading(false);
         }
     };
 
-    return (
-        <View style={styles.container}>
-            {/* Header with back button */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Text style={styles.backButtonText}>← Back</Text>
-                </TouchableOpacity>
-                <Text style={styles.headerText}>Make Prediction</Text>
-                <View style={styles.placeholder} />
-            </View>
+    const fetchFight = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const fetchedFight = await getFightById(Number(fight_id));
+            setFight(fetchedFight);
+        } catch (error) {
+            setError(error instanceof Error ? error.message : 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            {/* Fighters Container */}
+    // const handleSubmit = async () => {
+    //     try {
+    //         const token = await AsyncStorage.getItem('access_token');
+
+    //         let user_id: number | null = null;
+    //         if (token) {
+    //             const decoded: any = jwtDecode(token);
+    //             if (decoded && decoded.sub) {
+    //                 user_id = decoded.sub as number;
+    //             }
+    //         }
+
+    //         if (!user_id || !selectedFighter || !selectedMethod) {
+    //             console.warn('Prediction data is incomplete.');
+    //             return;
+    //         }
+
+    //         await createPrediction({
+    //             user_id: user_id,
+    //             event_url: fight.event_url,
+    //             fight_id: fightId,
+    //             fight_idx: fight.fight_idx,
+    //             fighter_prediction: selectedFighter,
+    //             method_prediction: selectedMethod,
+    //             round_prediction: selectedRound,
+    //         }, token ?? undefined);
+
+    //         router.back();
+    //     } catch (error) {
+    //         console.error('Error submitting prediction:', error);
+    //     }
+    // };
+
+
+    const renderFighterContainer = (fight: Fight | null) => {
+        if (!fight) return null;
+
+        const fighter1Name = formatFighterName(fight.fighter_1_name);
+        const fighter2Name = formatFighterName(fight.fighter_2_name);
+        return (
             <View style={styles.selectionContainer}>
                 <Text style={styles.subtitleText}>{selectedFighter ? 'Fighter' : 'Select Fighter'}</Text>
                 <View style={styles.fightersRow}>
                     {/* Fighter 1 */}
-                    <TouchableOpacity style={styles.fighterSection} onPress={() => setSelectedFighter(fight.fighter_1_name)} activeOpacity={0.8}>
+                    <TouchableOpacity style={styles.fighterSection} onPress={() => setSelectedFighter(fight.fighter_1_id)} activeOpacity={0.8}>
                         <Image
                             source={{ uri: fight.fighter_1_image }}
                             style={[
                                 styles.fighterImage,
-                                selectedFighter === fight.fighter_1_name && styles.selectedFighterImage
+                                selectedFighter === fight.fighter_1_id && styles.selectedFighterImage
                             ]}
                             contentFit="cover"
                             contentPosition="top"
@@ -128,12 +128,12 @@ export default function MakePredictionScreen() {
                     </TouchableOpacity>
 
                     {/* Fighter 2 */}
-                    <TouchableOpacity style={styles.fighterSection} onPress={() => setSelectedFighter(fight.fighter_2_name)} activeOpacity={0.8}>
+                    <TouchableOpacity style={styles.fighterSection} onPress={() => setSelectedFighter(fight.fighter_2_id)} activeOpacity={0.8}>
                         <Image
                             source={{ uri: fight.fighter_2_image }}
                             style={[
                                 styles.fighterImage,
-                                selectedFighter === fight.fighter_2_name && styles.selectedFighterImage
+                                selectedFighter === fight.fighter_2_id && styles.selectedFighterImage
                             ]}
                             contentFit="cover"
                             contentPosition="top"
@@ -147,19 +147,39 @@ export default function MakePredictionScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
+        );
+    }
 
-            { }
+    return (
+        <View style={styles.container}>
+            {/* Header with back button */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Text style={styles.backButtonText}>← Back</Text>
+                </TouchableOpacity>
+                <Text style={styles.headerText}>Make Prediction</Text>
+                <View style={styles.placeholder} />
+            </View>
+
+            {error ? (
+                <Text style={{ color: 'red', textAlign: 'center', marginTop: 20 }}>{error}</Text>
+            ) : null}
+
+            {/* Fighters Container */}
+            {renderFighterContainer(fight)}
+
+            {/* Method of Victory */}
             {selectedFighter && (
                 <View style={styles.selectionContainer}>
                     <Text style={styles.subtitleText}>Method of Victory</Text>
                     <View style={styles.methodImagesRow}>
                         {/* Knockout */}
-                        <TouchableOpacity style={styles.methodItem} onPress={() => setSelectedMethod('Knockout')} activeOpacity={0.8}>
+                        <TouchableOpacity style={styles.methodItem} onPress={() => setSelectedMethod(Method.KO)} activeOpacity={0.8}>
                             <Image
                                 source={require('../../assets/images/punch.png')}
                                 style={[
                                     styles.fighterImage,
-                                    selectedMethod === 'Knockout' && styles.selectedMethodImage
+                                    selectedMethod === Method.KO && styles.selectedMethodImage
                                 ]}
                                 contentFit="cover"
                                 contentPosition="center"
@@ -168,12 +188,12 @@ export default function MakePredictionScreen() {
                         </TouchableOpacity>
 
                         {/* Submission */}
-                        <TouchableOpacity style={styles.methodItem} onPress={() => setSelectedMethod('Submission')} activeOpacity={0.8}>
+                        <TouchableOpacity style={styles.methodItem} onPress={() => setSelectedMethod(Method.SUBMISSION)} activeOpacity={0.8}>
                             <Image
                                 source={require('../../assets/images/choke.png')}
                                 style={[
                                     styles.fighterImage,
-                                    selectedMethod === 'Submission' && styles.selectedMethodImage
+                                    selectedMethod === Method.SUBMISSION && styles.selectedMethodImage
                                 ]}
                                 contentFit="cover"
                                 contentPosition="center"
@@ -182,12 +202,12 @@ export default function MakePredictionScreen() {
                         </TouchableOpacity>
 
                         {/* Decision */}
-                        <TouchableOpacity style={styles.methodItem} onPress={() => setSelectedMethod('Decision')} activeOpacity={0.8}>
+                        <TouchableOpacity style={styles.methodItem} onPress={() => setSelectedMethod(Method.DECISION)} activeOpacity={0.8}>
                             <Image
                                 source={require('../../assets/images/law.png')}
                                 style={[
                                     styles.fighterImage,
-                                    selectedMethod === 'Decision' && styles.selectedMethodImage
+                                    selectedMethod === Method.DECISION && styles.selectedMethodImage
                                 ]}
                                 contentFit="cover"
                                 contentPosition="center"
@@ -199,7 +219,7 @@ export default function MakePredictionScreen() {
             )}
 
             {/* Round Selection */}
-            {(selectedMethod === 'Knockout' || selectedMethod === 'Submission') && (
+            {(selectedMethod === Method.KO || selectedMethod === Method.SUBMISSION) && (
                 <View style={styles.selectionContainer}>
                     <Text style={styles.subtitleText}>Select Round</Text>
                     <View style={styles.roundImagesRow}>
@@ -282,10 +302,10 @@ export default function MakePredictionScreen() {
             )}
 
             {/* Submit Button */}
-            {(selectedMethod === 'Decision' || selectedRound) && (
+            {(selectedMethod === Method.DECISION || selectedRound) && (
                 <TouchableOpacity
                     style={styles.submitButton}
-                    onPress={handleSubmit}
+                    // onPress={handleSubmit}
                     activeOpacity={0.8}
                 >
                     <Text style={styles.submitButtonText}>Submit Prediction</Text>

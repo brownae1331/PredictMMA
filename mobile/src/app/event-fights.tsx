@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Fight } from '../types/fight_types';
 import { getFightsByEvent } from '../lib/api/fight_api';
+import { formatFighterName } from '../lib/uiUtils';
 
 export default function EventFightsScreen() {
     const [fights, setFights] = useState<Fight[]>([]);
@@ -29,21 +30,11 @@ export default function EventFightsScreen() {
         }
     };
 
-    const formatFighterName = (fullName: string) => {
-        const nameParts = fullName.trim().split(' ');
-        if (nameParts.length === 1) {
-            return { firstName: nameParts[0], lastName: '' };
-        }
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ');
-        return { firstName, lastName };
-    };
-
-    const handleFightPress = (fight: Fight) => {
+    const handleFightPress = (fight_id: number) => {
         router.push({
             pathname: '/make-prediction',
             params: {
-                fightData: JSON.stringify(fight)
+                fight_id: fight_id
             }
         });
     };
@@ -53,7 +44,7 @@ export default function EventFightsScreen() {
         const fighter2Name = formatFighterName(fight.fighter_2_name);
 
         return (
-            <TouchableOpacity key={index} style={styles.fightCard} onPress={() => handleFightPress(fight)} activeOpacity={0.8}>
+            <TouchableOpacity key={index} style={styles.fightCard} onPress={() => handleFightPress(fight.id)} activeOpacity={0.8}>
                 <View style={styles.fightHeader}>
                     <Text style={styles.fightWeight}>{fight.weight_class}</Text>
                 </View>
