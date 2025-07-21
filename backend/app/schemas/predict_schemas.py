@@ -1,10 +1,22 @@
 from pydantic import BaseModel
+from enum import Enum
 
-class Prediction(BaseModel):
+class Method(str, Enum):
+    KO = "KO"
+    SUBMISSION = "SUBMISSION"
+    DECISION = "DECISION"
+
+class PredictionCreate(BaseModel):
     user_id: int
-    event_url: str
-    fight_id: str
-    fight_idx: int
-    fighter_prediction: str
-    method_prediction: str
-    round_prediction: int | None
+    fight_id: int
+    fighter_id: int
+    method: Method
+    round: int | None
+
+class PredictionOut(BaseModel):
+    event_title: str
+    fighter_1_name: str
+    fighter_2_name: str
+    winner: str
+    method: Method
+    round: int | None

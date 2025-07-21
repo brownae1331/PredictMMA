@@ -2,6 +2,7 @@ export interface HomePageMainEvent {
     event_id: number;
     event_title: string;
     event_date: Date;
+    fight_id: number;
     fighter_1_id: number;
     fighter_2_id: number;
     fighter_1_name: string;

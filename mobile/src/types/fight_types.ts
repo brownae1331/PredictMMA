@@ -1,4 +1,5 @@
 export interface Fight {
+    id: number;
     fighter_1_id: number;
     fighter_2_id: number;
     fighter_1_name: string;
@@ -9,7 +10,6 @@ export interface Fight {
     fighter_2_ranking: string;
     fighter_1_flag: string;
     fighter_2_flag: string;
-    match_number: number;
     weight_class: string;
     winner: string;
     method: string;
