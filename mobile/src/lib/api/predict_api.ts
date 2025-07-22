@@ -1,6 +1,6 @@
 import { API_CONFIG } from '../config';
 import { handleResponse } from '../apiUtils';
-import { PredictionCreate, PredictionOut } from '../../types/predict_types';
+import { PredictionCreate, PredictionOutMakePrediction, PredictionOutPredict } from '../../types/predict_types';
 
 export async function createPrediction(prediction: PredictionCreate): Promise<void> {
     const url = new URL(`${API_CONFIG.BASE_URL}/predict`);
@@ -15,7 +15,7 @@ export async function createPrediction(prediction: PredictionCreate): Promise<vo
     await handleResponse<void>(response);
 }
 
-export async function getPrediction(user_id: number, fight_id: number): Promise<PredictionOut | null> {
+export async function getPrediction(user_id: number, fight_id: number): Promise<PredictionOutMakePrediction | null> {
     const url = new URL(`${API_CONFIG.BASE_URL}/predict/${user_id}/${fight_id}`);
     const headers: Record<string, string> = { ...API_CONFIG.HEADERS };
 
@@ -28,11 +28,13 @@ export async function getPrediction(user_id: number, fight_id: number): Promise<
         return null;
     }
 
-    return handleResponse<PredictionOut>(response);
+    return handleResponse<PredictionOutMakePrediction>(response);
 }
 
-export async function getAllPredictions(user_id: number): Promise<PredictionOut[]> {
-    const url = new URL(`${API_CONFIG.BASE_URL}/predict/${user_id}/all`);
+export async function getAllPredictions(user_id: number): Promise<PredictionOutPredict[]> {
+    const url = new URL(`${API_CONFIG.BASE_URL}/predict/all`);
+    url.searchParams.set('user_id', user_id.toString());
+
     const headers: Record<string, string> = { ...API_CONFIG.HEADERS };
 
     const response = await fetch(url.toString(), {
@@ -44,5 +46,5 @@ export async function getAllPredictions(user_id: number): Promise<PredictionOut[
         return [];
     }
 
-    return handleResponse<PredictionOut[]>(response);
-}
+    return handleResponse<PredictionOutPredict[]>(response);
+}   

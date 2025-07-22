@@ -54,7 +54,7 @@ export default function MakePredictionScreen() {
             const existingPrediction = await getPrediction(user_id, Number(fight_id));
 
             if (existingPrediction) {
-                setSelectedFighter(existingPrediction.winner);
+                setSelectedFighter(existingPrediction.winner_id);
                 setSelectedMethod(existingPrediction.method);
                 setSelectedRound(existingPrediction.round);
             }
@@ -214,7 +214,7 @@ export default function MakePredictionScreen() {
                                 </TouchableOpacity>
 
                                 {/* Decision */}
-                                <TouchableOpacity style={styles.methodItem} onPress={() => setSelectedMethod(Method.DECISION)} activeOpacity={0.8}>
+                                <TouchableOpacity style={styles.methodItem} onPress={() => { setSelectedMethod(Method.DECISION); setSelectedRound(null) }} activeOpacity={0.8}>
                                     <Image
                                         source={require('../../assets/images/law.png')}
                                         style={[

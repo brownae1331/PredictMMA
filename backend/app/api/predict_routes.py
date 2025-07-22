@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
-from app.schemas.predict_schemas import PredictionCreate, PredictionOut
+from app.schemas.predict_schemas import PredictionCreate, PredictionOutMakePrediction, PredictionOutPredict
 from app.db.database import db_dependency
 from app.db.models import models
 from sqlalchemy.exc import IntegrityError
@@ -23,6 +23,7 @@ async def create_or_update_prediction(prediction: PredictionCreate, db: db_depen
         db_prediction.fighter_id = prediction.fighter_id
         db_prediction.method = prediction.method
         db_prediction.round = prediction.round
+
     else:
         db_prediction = models.Prediction(
             user_id=prediction.user_id,
@@ -40,7 +41,7 @@ async def create_or_update_prediction(prediction: PredictionCreate, db: db_depen
         raise HTTPException(status_code=400, detail="Could not save prediction")
 
 @router.get("/{user_id}/{fight_id}")
-async def get_prediction(user_id: int, fight_id: int, db: db_dependency) -> PredictionOut:
+async def get_prediction(user_id: int, fight_id: int, db: db_dependency) -> PredictionOutMakePrediction:
     """Return the saved prediction for a given *user_id* and *fight_id*."""
 
     db_prediction = (
@@ -65,14 +66,6 @@ async def get_prediction(user_id: int, fight_id: int, db: db_dependency) -> Pred
     if not db_fight:
         raise HTTPException(status_code=404, detail="Fight not found")
     
-    db_event = (
-        db.query(models.Event)
-        .filter(models.Event.id == db_fight.event_id)
-        .first()
-    )
-
-    if not db_event:
-        raise HTTPException(status_code=404, detail="Event not found")
 
     db_fighter_1 = (
         db.query(models.Fighter)
@@ -92,26 +85,27 @@ async def get_prediction(user_id: int, fight_id: int, db: db_dependency) -> Pred
     if not db_fighter_2:
         raise HTTPException(status_code=404, detail="Fighter 2 not found")
 
-    return PredictionOut(
-        event_title=db_event.title,
-        fighter_1_name=db_fighter_1.name,
-        fighter_2_name=db_fighter_2.name,
-        winner=db_prediction.fighter_id,
-        method=db_prediction.method,
+    return PredictionOutMakePrediction(
+        winner_id=db_prediction.fighter_id,
+        method=db_prediction.method,    
         round=db_prediction.round,
     )
 
-@router.get("/{user_id}/all")
-async def get_all_predictions(user_id: int, db: db_dependency) -> list[PredictionOut]:
+@router.get("/all")
+async def get_all_predictions(user_id: int, db: db_dependency) -> list[PredictionOutPredict]:
     """Return all predictions for a given *user_id*."""
     db_predictions = (
         db.query(models.Prediction)
+        .join(models.Fight, models.Prediction.fight_id == models.Fight.id)
         .filter(models.Prediction.user_id == user_id)
+        .order_by(models.Fight.match_number.desc())
         .all()
     )
 
     if not db_predictions:
         raise HTTPException(status_code=404, detail="No predictions found")
+    
+    predictions = []
 
     for prediction in db_predictions:
         db_fight = (
@@ -150,13 +144,22 @@ async def get_all_predictions(user_id: int, db: db_dependency) -> list[Predictio
         if not db_fighter_2:
             raise HTTPException(status_code=404, detail="Fighter 2 not found")
         
-        db_predictions.append(PredictionOut(
+        db_winner = (
+            db.query(models.Fighter)
+            .filter(models.Fighter.id == prediction.fighter_id)
+            .first()
+        )
+        
+        if not db_winner:
+            raise HTTPException(status_code=404, detail="Winner not found")
+        
+        predictions.append(PredictionOutPredict(
             event_title=db_event.title,
             fighter_1_name=db_fighter_1.name,
             fighter_2_name=db_fighter_2.name,
-            winner=prediction.fighter_id,
+            winner_image=db_winner.image_url,
             method=prediction.method,
             round=prediction.round,
         ))
 
-    return db_predictions
+    return predictions

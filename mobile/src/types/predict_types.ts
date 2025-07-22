@@ -12,11 +12,17 @@ export interface PredictionCreate {
     round: number | null;
 }
 
-export interface PredictionOut {
+export interface PredictionOutMakePrediction {
+    winner_id: number;
+    method: Method;
+    round: number | null;
+}
+
+export interface PredictionOutPredict {
     event_title: string;
     fighter_1_name: string;
     fighter_2_name: string;
-    winner: number;
+    winner_image: string;
     method: Method;
     round: number | null;
 }
