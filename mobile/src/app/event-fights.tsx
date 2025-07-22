@@ -2,47 +2,39 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Event, Fight } from '../types/ufc_types';
-import { getEventFights } from '../lib/api/ufc_api';
+import { Fight } from '../types/fight_types';
+import { getFightsByEvent } from '../lib/api/fight_api';
+import { formatFighterName } from '../lib/uiUtils';
 
-export default function EventDetailsScreen() {
-    const { eventData } = useLocalSearchParams();
-    const event: Event = JSON.parse(eventData as string);
+export default function EventFightsScreen() {
     const [fights, setFights] = useState<Fight[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchFights = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const data = await getEventFights(event.event_url);
-                setFights(data);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'An error occurred');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchFights();
-    }, [event.event_url]);
+    const { event_id } = useLocalSearchParams();
 
-    const formatFighterName = (fullName: string) => {
-        const nameParts = fullName.trim().split(' ');
-        if (nameParts.length === 1) {
-            return { firstName: nameParts[0], lastName: '' };
+    useEffect(() => {
+        fetchFights();
+    }, [event_id]);
+
+    const fetchFights = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const fetchedFights = await getFightsByEvent(Number(event_id));
+            setFights(fetchedFights);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+            setLoading(false);
         }
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ');
-        return { firstName, lastName };
     };
 
-    const handleFightPress = (fight: Fight) => {
+    const handleFightPress = (fight_id: number) => {
         router.push({
             pathname: '/make-prediction',
             params: {
-                fightData: JSON.stringify(fight)
+                fight_id: fight_id
             }
         });
     };
@@ -52,26 +44,29 @@ export default function EventDetailsScreen() {
         const fighter2Name = formatFighterName(fight.fighter_2_name);
 
         return (
-            <TouchableOpacity key={index} style={styles.fightCard} onPress={() => handleFightPress(fight)} activeOpacity={0.8}>
+            <TouchableOpacity key={index} style={styles.fightCard} onPress={() => handleFightPress(fight.id)} activeOpacity={0.8}>
                 <View style={styles.fightHeader}>
-                    <Text style={styles.fightWeight}>{fight.fight_weight}</Text>
+                    <Text style={styles.fightWeight}>{fight.weight_class}</Text>
                 </View>
                 <View style={styles.fightersContainer}>
                     {/* Fighter 1 */}
                     <View style={styles.fighterSection}>
-                        <Image
-                            source={{ uri: fight.fighter_1_image }}
-                            style={styles.fighterImage}
-                            contentFit="cover"
-                            contentPosition="top"
-                        />
+                        {fight.fighter_1_image ? (
+                            <Image
+                                source={{ uri: fight.fighter_1_image }}
+                                style={styles.fighterImage}
+                                contentFit="cover"
+                                contentPosition="top"
+                            />
+                        ) : (
+                            <View style={styles.fighterImage} />
+                        )}
                         <View style={styles.fighterInfoRow}>
                             {fight.fighter_1_flag ? (
                                 <Image
                                     source={{ uri: fight.fighter_1_flag }}
                                     style={styles.flagImage}
                                     contentFit="cover"
-                                    resizeMode="cover"
                                 />
                             ) : null}
                             <View style={styles.fighterNameContainer}>
@@ -81,9 +76,9 @@ export default function EventDetailsScreen() {
                                 )}
                             </View>
                         </View>
-                        {fight.fighter_1_rank && (
-                            <Text style={styles.fighterRank}>{fight.fighter_1_rank}</Text>
-                        )}
+                        {fight.fighter_1_ranking ? (
+                            <Text style={styles.fighterRank}>{`#${fight.fighter_1_ranking}`}</Text>
+                        ) : null}
                     </View>
 
                     {/* VS */}
@@ -93,19 +88,22 @@ export default function EventDetailsScreen() {
 
                     {/* Fighter 2 */}
                     <View style={styles.fighterSection}>
-                        <Image
-                            source={{ uri: fight.fighter_2_image }}
-                            style={styles.fighterImage}
-                            contentFit="cover"
-                            contentPosition="top"
-                        />
+                        {fight.fighter_2_image ? (
+                            <Image
+                                source={{ uri: fight.fighter_2_image }}
+                                style={styles.fighterImage}
+                                contentFit="cover"
+                                contentPosition="top"
+                            />
+                        ) : (
+                            <View style={styles.fighterImage} />
+                        )}
                         <View style={styles.fighterInfoRow}>
                             {fight.fighter_2_flag ? (
                                 <Image
                                     source={{ uri: fight.fighter_2_flag }}
                                     style={styles.flagImage}
                                     contentFit="cover"
-                                    resizeMode="cover"
                                 />
                             ) : null}
                             <View style={styles.fighterNameContainer}>
@@ -115,9 +113,9 @@ export default function EventDetailsScreen() {
                                 )}
                             </View>
                         </View>
-                        {fight.fighter_2_rank && (
-                            <Text style={styles.fighterRank}>{fight.fighter_2_rank}</Text>
-                        )}
+                        {fight.fighter_2_ranking ? (
+                            <Text style={styles.fighterRank}>{`#${fight.fighter_2_ranking}`}</Text>
+                        ) : null}
                     </View>
                 </View>
             </TouchableOpacity>
@@ -146,7 +144,7 @@ export default function EventDetailsScreen() {
                     ) : fights.length === 0 ? (
                         <Text style={{ textAlign: 'center', marginTop: 20 }}>No fights found for this event.</Text>
                     ) : (
-                        fights.map((fight, index) => renderFightCard(fight, index))
+                        fights.slice().reverse().map((fight, index) => renderFightCard(fight, index))
                     )}
                 </View>
             </ScrollView>

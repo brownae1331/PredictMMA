@@ -1,32 +1,56 @@
 from typing import List
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.services.sherdog_scraper import SherdogScraper
+from app.services.ufc_ranking_scraper import UFCRankingScraper
 from app.db.models.models import Event as EventModel, Fight as FightModel, Fighter as FighterModel
 from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSchema, Fighter as FighterSchema
 
 
-def scrape_ufc_data(db: Session) -> None:
+def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcoming: bool = True) -> None:
     """High-level orchestrator that pulls UFC data from Sherdog and seeds the database.
 
+    Parameters
+    ----------
+    scrape_previous : bool, optional
+        If True (default) the scraper will fetch and persist data for past UFC events.
+    scrape_upcoming : bool, optional
+        If True (default) the scraper will fetch and persist data for upcoming UFC events.
+
     Workflow:
-        1. Scrape previous and upcoming UFC events and upsert them.
+        1. Depending on the flags provided, scrape previous and/or upcoming UFC events and upsert them.
         2. For every event, scrape its fights and upsert them (including their fighters).
         3. For every unique fighter found, scrape detailed stats and upsert them.
     """
+    # Validate input flags
+    if not scrape_previous and not scrape_upcoming:
+        raise ValueError("At least one of 'scrape_previous' or 'scrape_upcoming' must be True.")
+
     print("\n================ UFC DATA SCRAPER ================")
     scraper = SherdogScraper()
 
     # 1) EVENTS ────────────────────────────────────────────────────────────
-    print("Fetching previous UFC events …")
-    previous_events: List[EventSchema] = scraper.get_previous_ufc_events()
-    print(f"  → {len(previous_events)} previous events scraped")
+    previous_events: List[EventSchema] = []
+    upcoming_events: List[EventSchema] = []
 
-    print("Fetching upcoming UFC events …")
-    upcoming_events: List[EventSchema] = scraper.get_upcoming_ufc_events()
-    print(f"  → {len(upcoming_events)} upcoming events scraped")
+    if scrape_previous:
+        print("Fetching previous UFC events …")
+        previous_events = scraper.get_previous_ufc_events()
+        print(f"  → {len(previous_events)} previous events scraped")
+
+    if scrape_upcoming:
+        print("Fetching upcoming UFC events …")
+        upcoming_events = scraper.get_upcoming_ufc_events()
+        print(f"  → {len(upcoming_events)} upcoming events scraped")
+
     all_events = previous_events + upcoming_events
+
+    # Early exit if no events were fetched (should not occur due to validation, but safe-guard)
+    if not all_events:
+        print("No events to persist — exiting scrape.")
+        return
 
     # Map full URL → persisted EventModel (used later for FK look-ups)
     persisted_events: dict[str, EventModel] = {}
@@ -60,16 +84,40 @@ def scrape_ufc_data(db: Session) -> None:
 
     def get_or_create_fighter(fighter_url: str) -> FighterModel:
         """Return a FighterModel row for the given URL, creating it if necessary."""
+        # Check if this fighter already exists in the DB
         fighter_row = db.query(FighterModel).filter_by(url=fighter_url).first()
         if fighter_row:
             return fighter_row
 
+        # Special-case: placeholder for unknown fighters (Sherdog uses `javascript:` links)
+        if fighter_url == "unknown":
+            fighter_row = FighterModel(
+                url="unknown",
+                name="Unknown Fighter",
+                nickname="",
+                image_url="",
+                record="0-0-0, 0 NC",
+                country="",
+                city="",
+                age=None,
+                dob=None,
+                height="",
+                weight_class="",
+                association="",
+            )
+            db.add(fighter_row)
+            db.flush()
+            print("      ✓ Added placeholder 'Unknown Fighter'")
+            return fighter_row
+
+        # Otherwise scrape real fighter stats
         print(f"    ↪ Scraping fighter stats: {fighter_url}")
         fighter_data: FighterSchema = scraper.get_fighter_stats(fighter_url)
         fighter_row = FighterModel(
             url=fighter_data.url,
             name=fighter_data.name,
             nickname=fighter_data.nickname,
+            image_url=fighter_data.image_url,
             record=fighter_data.record,
             country=fighter_data.country,
             city=fighter_data.city,
@@ -101,6 +149,9 @@ def scrape_ufc_data(db: Session) -> None:
         _upsert_fights(db, fights, persisted_events[event.url], get_or_create_fighter)
 
     db.commit()
+
+    # 3) RANKINGS ──────────────────────────────────────────────────────────
+    _update_fighter_rankings(db)
 
 
 def _upsert_fights(
@@ -136,4 +187,31 @@ def _upsert_fights(
         db.add(db_fight)
         print(f"      ✓ Added fight #{fight.match_number}: {fighter_1_row.name} vs {fighter_2_row.name}")
     # Flush but not commit inside the loop to avoid excessive commits
-    db.flush() 
+    db.flush()
+
+
+def _update_fighter_rankings(db: Session) -> None:
+    """Fetch current UFC rankings and update Fighter rows accordingly."""
+    print("\nFetching current UFC rankings …")
+    ranking_scraper = UFCRankingScraper()
+    rankings_dict = ranking_scraper.get_ufc_rankings()
+
+    print("Persisting fighter rankings to DB …")
+    updated = 0
+
+    for weight_class, ranked_fighters in rankings_dict.items():
+        for name, rank in ranked_fighters:
+            # Match on fighter name (case-insensitive) and weight class (substring match to cope with "Women's" prefix)
+            fighter_row = (
+                db.query(FighterModel)
+                .filter(func.lower(FighterModel.name) == name.lower())
+                .filter(FighterModel.weight_class.ilike(f"%{weight_class}%"))
+                .first()
+            )
+
+            if fighter_row:
+                fighter_row.ranking = rank
+                updated += 1
+
+    db.commit()
+    print(f"  ✓ Updated rankings for {updated} fighters.") 

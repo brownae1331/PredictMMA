@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
@@ -30,7 +30,9 @@ class Fighter(Base):
     url = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)
     nickname = Column(String)
+    image_url = Column(String)
     record = Column(String)
+    ranking = Column(String)
     country = Column(String)
     city = Column(String)
     age = Column(Integer)
@@ -38,6 +40,10 @@ class Fighter(Base):
     height = Column(String)
     weight_class = Column(String)
     association = Column(String)
+
+    __table_args__ = (
+        UniqueConstraint("name", "weight_class", name="uix_name_weight_class"),
+    )
 
     predictions = relationship("Prediction", back_populates="fighter", cascade="all, delete-orphan")
 
@@ -48,12 +54,16 @@ class Fight(Base):
     event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
     fighter_1_id = Column(Integer, ForeignKey("fighters.id", ondelete="CASCADE"), nullable=False)
     fighter_2_id = Column(Integer, ForeignKey("fighters.id", ondelete="CASCADE"), nullable=False)
-    match_number = Column(Integer)
+    match_number = Column(Integer, nullable=False)
     weight_class = Column(String)
     winner = Column(String)
     method = Column(String)
     round = Column(Integer)
     time = Column(String)
+
+    __table_args__ = (
+        UniqueConstraint("event_id", "match_number", name="uix_event_match_number"),
+    )
 
     event = relationship("Event", back_populates="fights")
     fighter_1 = relationship("Fighter", foreign_keys=[fighter_1_id])
@@ -69,6 +79,10 @@ class Prediction(Base):
     fighter_id = Column(Integer, ForeignKey("fighters.id", ondelete="CASCADE"), nullable=False)
     method = Column(String, nullable=False)
     round = Column(Integer, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "fight_id", name="uix_user_fight"),
+    )
 
     user = relationship("User", back_populates="predictions")
     fight = relationship("Fight", back_populates="predictions")
