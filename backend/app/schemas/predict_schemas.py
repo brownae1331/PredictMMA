@@ -13,10 +13,15 @@ class PredictionCreate(BaseModel):
     method: Method
     round: int | None
 
-class PredictionOut(BaseModel):
+class PredictionOutMakePrediction(BaseModel):
+    winner_id: int
+    method: Method
+    round: int | None
+
+class PredictionOutPredict(BaseModel):
     event_title: str
     fighter_1_name: str
     fighter_2_name: str
-    winner: int
+    winner_image: str
     method: Method
     round: int | None
