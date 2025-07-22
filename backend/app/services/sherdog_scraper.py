@@ -8,11 +8,21 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 class SherdogScraper:
+    # Sentinel URL used when Sherdog marks a fighter as unknown (href starts with "javascript:")
+    UNKNOWN_FIGHTER_URL = "unknown"
+
     def __init__(self):
         self.base_url = "https://www.sherdog.com"
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         }
+
+    @staticmethod
+    def _is_valid_href(href: str) -> bool:
+        """Return True if the href looks like a real link to a fighter profile."""
+        if not href:
+            return False
+        return not href.strip().lower().startswith("javascript:")
 
     def get_previous_ufc_events(self) -> List[Event]:
         """
@@ -120,8 +130,16 @@ class SherdogScraper:
             fighter_1_link_rel = fighter_1_container.find("a", itemprop="url").get("href")
             fighter_2_link_rel = fighter_2_container.find("a", itemprop="url").get("href")
 
-            fighter_1_url = urljoin(self.base_url, fighter_1_link_rel)
-            fighter_2_url = urljoin(self.base_url, fighter_2_link_rel)
+            fighter_1_url = (
+                urljoin(self.base_url, fighter_1_link_rel)
+                if self._is_valid_href(fighter_1_link_rel)
+                else self.UNKNOWN_FIGHTER_URL
+            )
+            fighter_2_url = (
+                urljoin(self.base_url, fighter_2_link_rel)
+                if self._is_valid_href(fighter_2_link_rel)
+                else self.UNKNOWN_FIGHTER_URL
+            )
 
             fight_weight = main_event_container.find("span", class_="weight_class").text.strip()
 
@@ -180,8 +198,17 @@ class SherdogScraper:
 
             fighter_1_url_rel = fighter_1_container.find("a", itemprop="url")["href"]
             fighter_2_url_rel = fighter_2_container.find("a", itemprop="url")["href"]
-            fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
-            fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
+
+            fighter_1_url = (
+                urljoin(self.base_url, fighter_1_url_rel)
+                if self._is_valid_href(fighter_1_url_rel)
+                else self.UNKNOWN_FIGHTER_URL
+            )
+            fighter_2_url = (
+                urljoin(self.base_url, fighter_2_url_rel)
+                if self._is_valid_href(fighter_2_url_rel)
+                else self.UNKNOWN_FIGHTER_URL
+            )
 
             fight_weight = tds[2].find("span", class_="weight_class").text.strip()
 
@@ -242,11 +269,20 @@ class SherdogScraper:
 
                 fighter_1_url_rel = fighter_1_container.find("a", itemprop="url")["href"]
                 fighter_2_url_rel = fighter_2_container.find("a", itemprop="url")["href"]
-                fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
-                fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
+
+                fighter_1_url = (
+                    urljoin(self.base_url, fighter_1_url_rel)
+                    if self._is_valid_href(fighter_1_url_rel)
+                    else self.UNKNOWN_FIGHTER_URL
+                )
+                fighter_2_url = (
+                    urljoin(self.base_url, fighter_2_url_rel)
+                    if self._is_valid_href(fighter_2_url_rel)
+                    else self.UNKNOWN_FIGHTER_URL
+                )
 
                 fight_weight = tds[2].find("span", class_="weight_class").text.strip()
-                
+
                 fights.append(Fight(
                     event_url=event_url,
                     fighter_1_url=fighter_1_url,
@@ -258,7 +294,7 @@ class SherdogScraper:
                     round=0,
                     time="",
                 ))
-            
+
 
         main_event_container = soup.find("div", itemprop="subEvent")
         if main_event_container:
@@ -268,11 +304,18 @@ class SherdogScraper:
             fighter_1_url_rel = fighter_1_container.find("a", itemprop="url").get("href")
             fighter_2_url_rel = fighter_2_container.find("a", itemprop="url").get("href")
 
-            fighter_1_url = urljoin(self.base_url, fighter_1_url_rel)
-            fighter_2_url = urljoin(self.base_url, fighter_2_url_rel)
+            fighter_1_url = (
+                urljoin(self.base_url, fighter_1_url_rel)
+                if self._is_valid_href(fighter_1_url_rel)
+                else self.UNKNOWN_FIGHTER_URL
+            )
+            fighter_2_url = (
+                urljoin(self.base_url, fighter_2_url_rel)
+                if self._is_valid_href(fighter_2_url_rel)
+                else self.UNKNOWN_FIGHTER_URL
+            )
 
             fight_weight = main_event_container.find("span", class_="weight_class").text.strip()
-
             fights.append(
                 Fight(
                     event_url=event_url,
@@ -294,6 +337,22 @@ class SherdogScraper:
         Scrapes the stats for a given fighter from Sherdog.
         Returns a Fighter object.
         """
+        if fighter_url == self.UNKNOWN_FIGHTER_URL:
+            return Fighter(
+                url=self.UNKNOWN_FIGHTER_URL,
+                name="Unknown Fighter",
+                nickname="",
+                image_url="",
+                record="0-0-0, 0 NC",
+                ranking="",
+                country="",
+                city="",
+                age=0,
+                dob=None,
+                height="",
+                weight_class="",
+                association="",
+            )
         scraper = cloudscraper.create_scraper()
         response = scraper.get(fighter_url, headers=self.headers)
         soup = BeautifulSoup(response.text, "html.parser")
@@ -301,9 +360,11 @@ class SherdogScraper:
         name = soup.find("h1", itemprop="name").text.strip()
         nickname = soup.find("span", class_="nickname").text.strip() if soup.find("span", class_="nickname") else ""
 
+        image_url = self.base_url + soup.find("img", itemprop="image")["src"]
+
         wins = re.search(r"\d+", soup.find("div", class_="winloses win").text.strip()).group(0)
         loses = re.search(r"\d+", soup.find("div", class_="winloses lose").text.strip()).group(0)
-        draws = re.search(r"\d+", soup.find("div", class_="winloses draw").text.strip()).group(0) if soup.find("div", class_="winloses draw") else "0"
+        draws = re.search(r"\d+", soup.find("div", class_="winloses draws").text.strip()).group(0) if soup.find("div", class_="winloses draws") else "0"
         no_contests = re.search(r"\d+", soup.find("div", class_="winloses nc").text.strip()).group(0) if soup.find("div", class_="winloses nc") else "0"
         record = f"{wins}-{loses}-{draws}, {no_contests} NC"
 
@@ -331,7 +392,9 @@ class SherdogScraper:
             url=fighter_url,
             name=name,
             nickname=nickname,
+            image_url=image_url,
             record=record,
+            ranking="",
             country=country,
             city=city,
             age=age,
