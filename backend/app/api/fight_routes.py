@@ -30,7 +30,7 @@ def _get_flag_image_url(location: str) -> str:
 
     return f"https://flagcdn.com/w320/{country_code.lower()}.png"
 
-@router.get("/event")
+@router.get("/event/{event_id}")
 def get_fights_by_event(event_id: int, db: db_dependency) -> list[Fight]:
     """Return a list of fights for a given event."""
 
@@ -86,7 +86,7 @@ def get_fights_by_event(event_id: int, db: db_dependency) -> list[Fight]:
 
     return fights
 
-@router.get("/fight")
+@router.get("/fight/{fight_id}")
 def get_fight_by_id(fight_id: int, db: db_dependency) -> Fight:
     """Return a fight by its ID."""
 

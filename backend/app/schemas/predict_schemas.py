@@ -17,6 +17,6 @@ class PredictionOut(BaseModel):
     event_title: str
     fighter_1_name: str
     fighter_2_name: str
-    winner: str
+    winner: int
     method: Method
     round: int | None
