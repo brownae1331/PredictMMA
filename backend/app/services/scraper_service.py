@@ -47,12 +47,10 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
 
     all_events = previous_events + upcoming_events
 
-    # Early exit if no events were fetched (should not occur due to validation, but safe-guard)
     if not all_events:
         print("No events to persist — exiting scrape.")
         return
 
-    # Map full URL → persisted EventModel (used later for FK look-ups)
     persisted_events: dict[str, EventModel] = {}
 
     print("\nPersisting events to DB …")
@@ -60,7 +58,6 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
         print(f"  • Event: {event.title} ({event.date.strftime('%Y-%m-%d')})")
         existing = db.query(EventModel).filter_by(url=event.url).first()
         if existing:
-            # Optional: update mutable fields in case of changes
             existing.title = event.title
             existing.date = event.date
             existing.location = event.location
@@ -75,7 +72,7 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
                 organizer=event.organizer,
             )
             db.add(new_event)
-            db.flush()  # get PK without committing yet
+            db.flush()
             persisted_events[event.url] = new_event
 
     db.commit()
@@ -83,13 +80,30 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
     # 2) FIGHTS & FIGHTERS ─────────────────────────────────────────────────
 
     def get_or_create_fighter(fighter_url: str) -> FighterModel:
-        """Return a FighterModel row for the given URL, creating it if necessary."""
-        # Check if this fighter already exists in the DB
+        """
+        Return a FighterModel row for the given URL, creating it if necessary.
+        If the fighter already exists, update their stats if they are not a placeholder.
+        """
         fighter_row = db.query(FighterModel).filter_by(url=fighter_url).first()
         if fighter_row:
+            if fighter_url != "unknown":
+                print(f"    ↪ Updating fighter stats: {fighter_url}")
+                fighter_data: FighterSchema = scraper.get_fighter_stats(fighter_url)
+                fighter_row.name = fighter_data.name
+                fighter_row.nickname = fighter_data.nickname
+                fighter_row.image_url = fighter_data.image_url
+                fighter_row.record = fighter_data.record
+                fighter_row.country = fighter_data.country
+                fighter_row.city = fighter_data.city
+                fighter_row.age = fighter_data.age
+                fighter_row.dob = fighter_data.dob
+                fighter_row.height = fighter_data.height
+                fighter_row.weight_class = fighter_data.weight_class
+                fighter_row.association = fighter_data.association
+                db.flush()
+                print(f"      ✓ Updated fighter: {fighter_data.name}")
             return fighter_row
 
-        # Special-case: placeholder for unknown fighters (Sherdog uses `javascript:` links)
         if fighter_url == "unknown":
             fighter_row = FighterModel(
                 url="unknown",
@@ -110,7 +124,6 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
             print("      ✓ Added placeholder 'Unknown Fighter'")
             return fighter_row
 
-        # Otherwise scrape real fighter stats
         print(f"    ↪ Scraping fighter stats: {fighter_url}")
         fighter_data: FighterSchema = scraper.get_fighter_stats(fighter_url)
         fighter_row = FighterModel(
@@ -134,14 +147,12 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
 
     print("\nScraping fights for each event …")
 
-    # Previous completed events first
     for event in previous_events:
         print(f"\n▶ Previous Event: {event.title}")
         fights: List[FightSchema] = scraper.get_previous_event_fights(event.url)
         print(f"  → {len(fights)} fights found")
         _upsert_fights(db, fights, persisted_events[event.url], get_or_create_fighter)
 
-    # Upcoming events
     for event in upcoming_events:
         print(f"\n▶ Upcoming Event: {event.title}")
         fights: List[FightSchema] = scraper.get_upcoming_event_fights(event.url)
@@ -160,33 +171,74 @@ def _upsert_fights(
     event_row: EventModel,
     get_or_create_fighter,
 ) -> None:
-    """Persist fights for a single event, creating fighter rows as needed."""
-    for fight in fights:
-        exists = (
-            db.query(FightModel)
-            .filter_by(event_id=event_row.id, match_number=fight.match_number)
-            .first()
-        )
-        if exists:
-            continue
+    """Persist fights for a single event, handling inserts, updates, and cancellations."""
 
-        fighter_1_row = get_or_create_fighter(fight.fighter_1_url)
-        fighter_2_row = get_or_create_fighter(fight.fighter_2_url)
+    scraped_by_number: dict[int, FightSchema] = {f.match_number: f for f in fights}
 
-        db_fight = FightModel(
-            event_id=event_row.id,
-            fighter_1_id=fighter_1_row.id,
-            fighter_2_id=fighter_2_row.id,
-            match_number=fight.match_number,
-            weight_class=fight.weight_class,
-            winner=fight.winner,
-            method=fight.method,
-            round=fight.round,
-            time=fight.time,
-        )
-        db.add(db_fight)
-        print(f"      ✓ Added fight #{fight.match_number}: {fighter_1_row.name} vs {fighter_2_row.name}")
-    # Flush but not commit inside the loop to avoid excessive commits
+    existing_fights: list[FightModel] = (
+        db.query(FightModel).filter_by(event_id=event_row.id).all()
+    )
+    existing_by_number: dict[int, FightModel] = {
+        f.match_number: f for f in existing_fights
+    }
+
+    # ── INSERT OR UPDATE ────────────────────────────────────────────────
+    for match_number, scraped in scraped_by_number.items():
+        fighter_1_row = get_or_create_fighter(scraped.fighter_1_url)
+        fighter_2_row = get_or_create_fighter(scraped.fighter_2_url)
+
+        if match_number in existing_by_number:
+            db_fight = existing_by_number[match_number]
+            changes_made = False
+
+            if db_fight.fighter_1_id != fighter_1_row.id:
+                db_fight.fighter_1_id = fighter_1_row.id
+                changes_made = True
+            if db_fight.fighter_2_id != fighter_2_row.id:
+                db_fight.fighter_2_id = fighter_2_row.id
+                changes_made = True
+
+            for attr in [
+                "weight_class",
+                "winner",
+                "method",
+                "round",
+                "time",
+            ]:
+                new_val = getattr(scraped, attr)
+                if getattr(db_fight, attr) != new_val:
+                    setattr(db_fight, attr, new_val)
+                    changes_made = True
+
+            if changes_made:
+                print(
+                    f"      ↻ Updated fight #{match_number}: {fighter_1_row.name} vs {fighter_2_row.name}"
+                )
+        else:
+            db_fight = FightModel(
+                event_id=event_row.id,
+                fighter_1_id=fighter_1_row.id,
+                fighter_2_id=fighter_2_row.id,
+                match_number=scraped.match_number,
+                weight_class=scraped.weight_class,
+                winner=scraped.winner,
+                method=scraped.method,
+                round=scraped.round,
+                time=scraped.time,
+            )
+            db.add(db_fight)
+            print(
+                f"      ✓ Added fight #{scraped.match_number}: {fighter_1_row.name} vs {fighter_2_row.name}"
+            )
+
+    # ── CANCELLATIONS ──────────────────────────────────────────────────
+    for match_number, db_fight in existing_by_number.items():
+        if match_number not in scraped_by_number:
+            print(
+                f"      ✗ Removed cancelled fight #{match_number}: {db_fight.fighter_1.name} vs {db_fight.fighter_2.name}"
+            )
+            db.delete(db_fight)
+
     db.flush()
 
 
@@ -201,7 +253,6 @@ def _update_fighter_rankings(db: Session) -> None:
 
     for weight_class, ranked_fighters in rankings_dict.items():
         for name, rank in ranked_fighters:
-            # Match on fighter name (case-insensitive) and weight class (substring match to cope with "Women's" prefix)
             fighter_row = (
                 db.query(FighterModel)
                 .filter(func.lower(FighterModel.name) == name.lower())
