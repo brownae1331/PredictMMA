@@ -1,5 +1,6 @@
 import cloudscraper
 from bs4 import BeautifulSoup
+from app.core.string_utils import strip_accents
 
 class UFCRankingScraper:
     def __init__(self):
@@ -41,7 +42,7 @@ class UFCRankingScraper:
 
             caption_tag = table.find("caption")
             champion_header = caption_tag.find("h5")
-            champion_name = champion_header.get_text(strip=True)
+            champion_name = strip_accents(champion_header.get_text(strip=True))
 
             if champion_name:
                 rankings[weight_class].append((champion_name, "Champion"))
@@ -50,7 +51,7 @@ class UFCRankingScraper:
 
             for tr in tbody.find_all("tr"):
                 rank = tr.find("td", class_="views-field-weight-class-rank").get_text(strip=True)
-                name = tr.find("td", class_="views-field-title").get_text(strip=True)
+                name = strip_accents(tr.find("td", class_="views-field-title").get_text(strip=True))
 
                 rankings[weight_class].append((name, rank))
 

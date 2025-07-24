@@ -97,8 +97,9 @@ async def get_all_predictions(user_id: int, db: db_dependency) -> list[Predictio
     db_predictions = (
         db.query(models.Prediction)
         .join(models.Fight, models.Prediction.fight_id == models.Fight.id)
+        .join(models.Event, models.Fight.event_id == models.Event.id)
         .filter(models.Prediction.user_id == user_id)
-        .order_by(models.Fight.match_number.desc())
+        .order_by(models.Event.date.asc(), models.Fight.match_number.desc())       
         .all()
     )
 
