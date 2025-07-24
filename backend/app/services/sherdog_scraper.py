@@ -2,13 +2,16 @@ import re
 import cloudscraper
 from bs4 import BeautifulSoup
 from typing import List
+
+from app.core.string_utils import strip_accents
 from app.schemas.sherdog_schemas import Event, Fight, Fighter
 from urllib.parse import urljoin
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 class SherdogScraper:
-    # Sentinel URL used when Sherdog marks a fighter as unknown (href starts with "javascript:")
+    """Scraper for Sherdog.com."""
+    
     UNKNOWN_FIGHTER_URL = "unknown"
 
     def __init__(self):
@@ -357,7 +360,7 @@ class SherdogScraper:
         response = scraper.get(fighter_url, headers=self.headers)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        name = soup.find("h1", itemprop="name").text.strip()
+        name = strip_accents(soup.find("h1", itemprop="name").text.strip())
         nickname = soup.find("span", class_="nickname").text.strip() if soup.find("span", class_="nickname") else ""
 
         image_url = self.base_url + soup.find("img", itemprop="image")["src"]

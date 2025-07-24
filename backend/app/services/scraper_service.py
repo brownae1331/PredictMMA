@@ -64,16 +64,25 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
             existing.organizer = event.organizer
             persisted_events[event.url] = existing
         else:
-            new_event = EventModel(
-                url=event.url,
-                title=event.title,
-                date=event.date,
-                location=event.location,
-                organizer=event.organizer,
-            )
-            db.add(new_event)
-            db.flush()
-            persisted_events[event.url] = new_event
+            existing = db.query(EventModel).filter_by(date=event.date, location=event.location, organizer=event.organizer).first()
+            if existing:
+                existing.url = event.url
+                existing.title = event.title
+                existing.date = event.date
+                existing.location = event.location
+                existing.organizer = event.organizer
+                persisted_events[event.url] = existing
+            else:
+                new_event = EventModel(
+                    url=event.url,
+                    title=event.title,
+                    date=event.date,
+                    location=event.location,
+                    organizer=event.organizer,
+                )
+                db.add(new_event)
+                db.flush()
+                persisted_events[event.url] = new_event
 
     db.commit()
 
