@@ -1,5 +1,5 @@
 import { API_CONFIG } from '../config';
-import { handleResponse } from '../apiUtils';
+import { handleResponse } from '../utils/apiUtils';
 
 export async function registerUser(username: string, password: string): Promise<void> {
     const url = new URL(`${API_CONFIG.BASE_URL}/auth/register`);

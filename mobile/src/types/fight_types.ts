@@ -1,3 +1,11 @@
+import { Method } from "./predict_types";
+
+export enum ResultType {
+    WIN = "WIN",
+    DRAW = "DRAW",
+    NO_CONTEST = "NO_CONTEST",
+}
+
 export interface Fight {
     id: number;
     fighter_1_id: number;
@@ -12,7 +20,15 @@ export interface Fight {
     fighter_2_flag: string;
     weight_class: string;
     winner: string;
-    method: string;
+    method: Method;
+    round: number;
+    time: string;
+}
+
+export interface FightResult {
+    result_type: ResultType;
+    winner_id: number | null;
+    method: Method;
     round: number;
     time: string;
 }

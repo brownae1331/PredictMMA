@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Fight } from '../types/fight_types';
 import { getFightsByEvent } from '../lib/api/fight_api';
-import { formatFighterName } from '../lib/uiUtils';
+import { formatFighterName } from '../lib/utils/uiUtils';
 
 export default function EventFightsScreen() {
     const [fights, setFights] = useState<Fight[]>([]);

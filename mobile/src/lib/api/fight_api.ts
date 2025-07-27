@@ -1,6 +1,6 @@
 import { API_CONFIG } from '../config';
-import { handleResponse } from '../apiUtils';
-import { Fight } from '../../types/fight_types';
+import { handleResponse } from '../utils/apiUtils';
+import { Fight, FightResult } from '../../types/fight_types';
 
 export async function getFightsByEvent(event_id: number): Promise<Fight[]> {
     const url = new URL(`${API_CONFIG.BASE_URL}/fights/event/${event_id}`);
@@ -24,4 +24,16 @@ export async function getFightById(fight_id: number): Promise<Fight> {
     });
 
     return handleResponse<Fight>(response);
+}
+
+export async function getFightResultById(fight_id: number): Promise<FightResult | null> {
+    const url = new URL(`${API_CONFIG.BASE_URL}/fights/result/${fight_id}`);
+    const headers: Record<string, string> = { ...API_CONFIG.HEADERS };
+
+    const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers,
+    });
+
+    return handleResponse<FightResult | null>(response);
 }

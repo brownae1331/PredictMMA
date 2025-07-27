@@ -1,5 +1,5 @@
 import { API_CONFIG } from '../config';
-import { handleResponse } from '../apiUtils';
+import { handleResponse } from '../utils/apiUtils';
 import { PredictionCreate, PredictionOutMakePrediction, PredictionOutPredict } from '../../types/predict_types';
 
 export async function createPrediction(prediction: PredictionCreate): Promise<void> {

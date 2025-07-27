@@ -3,6 +3,8 @@ from app.schemas.predict_schemas import PredictionCreate, PredictionOutMakePredi
 from app.db.database import db_dependency
 from app.db.models import models
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 router = APIRouter()
 
@@ -19,11 +21,28 @@ async def create_or_update_prediction(prediction: PredictionCreate, db: db_depen
         .first()
     )
 
+    db_fight_event = (
+        db.query(models.Fight, models.Event)
+        .join(models.Event, models.Fight.event_id == models.Event.id)
+        .filter(models.Fight.id == prediction.fight_id)
+        .first()
+    )
+
+    db_fight, db_event = db_fight_event
+
+    if not db_fight:
+        raise HTTPException(status_code=404, detail="Fight not found")
+
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    if db_event.date < datetime.now(ZoneInfo("Europe/London")):
+        raise HTTPException(status_code=400, detail="Cannot predict for past events")
+
     if db_prediction:
         db_prediction.fighter_id = prediction.fighter_id
         db_prediction.method = prediction.method
         db_prediction.round = prediction.round
-
     else:
         db_prediction = models.Prediction(
             user_id=prediction.user_id,

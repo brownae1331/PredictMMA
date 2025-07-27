@@ -1,34 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from app.db.database import db_dependency
 from app.db.models import models
-from app.schemas.fight_schemas import Fight
-import pycountry
+from app.schemas.fight_schemas import Fight, FightResult, ResultType
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from app.core.utils.string_utils import simplify_method, get_flag_image_url
 
 router = APIRouter()
 
-def _get_flag_image_url(location: str) -> str:
-    """
-    Finds a flag image from the location string using flagcdn.com.
-    """
-    SPECIAL_CASES = {
-        "England": "gb-eng",
-        "Scotland": "gb-sct",
-        "Wales": "gb-wls",
-        "Northern Ireland": "gb-nir",
-        "Russia": "ru",
-    }
-
-    country_name = location.split(",")[-1].strip()
-    country = pycountry.countries.get(name=country_name)
-    country_code = country.alpha_2 if country else ""
-
-    if country_name in SPECIAL_CASES:
-        country_code = SPECIAL_CASES[country_name]
-
-    if not country_code:
-        return ""
-
-    return f"https://flagcdn.com/w320/{country_code.lower()}.png"
 
 @router.get("/event/{event_id}")
 def get_fights_by_event(event_id: int, db: db_dependency) -> list[Fight]:
@@ -75,11 +54,11 @@ def get_fights_by_event(event_id: int, db: db_dependency) -> list[Fight]:
             fighter_2_image=fight_fighter_2.image_url,
             fighter_1_ranking=fight_fighter_1.ranking,
             fighter_2_ranking=fight_fighter_2.ranking,
-            fighter_1_flag=_get_flag_image_url(fight_fighter_1.country),
-            fighter_2_flag=_get_flag_image_url(fight_fighter_2.country),
+            fighter_1_flag=get_flag_image_url(fight_fighter_1.country),
+            fighter_2_flag=get_flag_image_url(fight_fighter_2.country),
             weight_class=fight.weight_class,
             winner=fight.winner,
-            method=fight.method,
+            method=simplify_method(fight.method),
             round=fight.round,
             time=fight.time
         ))
@@ -127,11 +106,47 @@ def get_fight_by_id(fight_id: int, db: db_dependency) -> Fight:
         fighter_2_image=fight_fighter_2.image_url,
         fighter_1_ranking=fight_fighter_1.ranking,
         fighter_2_ranking=fight_fighter_2.ranking,
-        fighter_1_flag=_get_flag_image_url(fight_fighter_1.country),
-        fighter_2_flag=_get_flag_image_url(fight_fighter_2.country),
+        fighter_1_flag=get_flag_image_url(fight_fighter_1.country),
+        fighter_2_flag=get_flag_image_url(fight_fighter_2.country),
         weight_class=db_fight.weight_class,
         winner=db_fight.winner,
-        method=db_fight.method,
+        method=simplify_method(db_fight.method),
+        round=db_fight.round,
+        time=db_fight.time
+    )
+
+@router.get("/result/{fight_id}")
+def get_fight_result_by_id(fight_id: int, db: db_dependency) -> FightResult | None:
+    """Return the result of a fight by its ID."""
+
+    db_fight = (
+        db.query(models.Fight)
+        .filter(models.Fight.id == fight_id)
+        .join(models.Event, models.Fight.event_id == models.Event.id)
+        .filter(models.Event.date < datetime.now(ZoneInfo("Europe/London")))
+        .first()
+    )
+
+    if not db_fight:
+        return None
+    
+    if db_fight.winner == "draw":
+        result_type = ResultType.DRAW
+        winner_id = None
+    elif db_fight.winner == "no contest":
+        result_type = ResultType.NO_CONTEST
+        winner_id = None
+    else:
+        result_type = ResultType.WIN
+        winner_id = db_fight.fighter_1_id
+
+    if not db_fight.winner:
+        raise HTTPException(status_code=404, detail="Fight result not found")
+    
+    return FightResult(
+        result_type=result_type,
+        winner_id=winner_id,
+        method=simplify_method(db_fight.method),
         round=db_fight.round,
         time=db_fight.time
     )
