@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { HomePageMainEvent } from '../../types/event_types';
 import { getHomePageMainEvents } from '../../lib/api/event_api';
 import { router } from 'expo-router';
-import { formatFighterName } from '../../lib/uiUtils';
+import { formatFighterName } from '../../lib/utils/uiUtils';
 
 export default function HomeScreen() {
     const [mainEvents, setMainEvents] = useState<HomePageMainEvent[]>([]);

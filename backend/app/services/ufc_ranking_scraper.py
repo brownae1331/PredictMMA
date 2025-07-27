@@ -1,6 +1,6 @@
 import cloudscraper
 from bs4 import BeautifulSoup
-from app.core.string_utils import strip_accents
+from app.core.utils.string_utils import strip_accents
 
 class UFCRankingScraper:
     def __init__(self):

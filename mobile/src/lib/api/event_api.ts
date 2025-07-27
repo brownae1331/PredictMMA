@@ -1,5 +1,5 @@
 import { API_CONFIG } from '../config';
-import { handleResponse } from '../apiUtils';
+import { handleResponse } from '../utils/apiUtils';
 import { HomePageMainEvent, Event } from '../../types/event_types';
 
 export async function getHomePageMainEvents(limit: number): Promise<HomePageMainEvent[]> {
