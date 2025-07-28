@@ -23,5 +23,5 @@ app.include_router(fight_routes, prefix="/fights", tags=["Fights"])
 @app.get("/")
 def read_root(db: Session = Depends(get_db)):
     """Root endpoint: trigger a full UFC data scrape and seeding operation."""
-    scrape_ufc_data(db, scrape_previous=False, scrape_upcoming=True)
+    scrape_ufc_data(db, scrape_previous=True, scrape_upcoming=True)
     return {"message": "Database updated with latest UFC data."}
