@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { DismissKeyboardView } from '../../lib/utils/uiUtils';
 import { registerUser } from '../../lib/api/auth_api';
 import { router } from 'expo-router';
 
@@ -38,7 +39,7 @@ export default function SignupScreen() {
     };
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <DismissKeyboardView>
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f6f8fa' }}>
                 <View style={styles.card}>
                     <Text style={styles.title}>Sign Up</Text>
@@ -67,7 +68,7 @@ export default function SignupScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-        </TouchableWithoutFeedback>
+        </DismissKeyboardView>
     );
 }
 

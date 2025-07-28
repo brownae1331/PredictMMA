@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { DismissKeyboardView } from '../../lib/utils/uiUtils';
 import { loginUser } from '../../lib/api/auth_api';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,7 +42,7 @@ export default function LoginScreen() {
     };
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <DismissKeyboardView>
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f6f8fa' }}>
                 <View style={styles.card}>
                     <Text style={styles.title}>Login</Text>
@@ -70,7 +71,7 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-        </TouchableWithoutFeedback>
+        </DismissKeyboardView>
     );
 }
 
