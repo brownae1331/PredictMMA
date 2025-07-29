@@ -1,5 +1,3 @@
-import { Method } from "./predict_types";
-
 export enum ResultType {
     WIN = "WIN",
     DRAW = "DRAW",
@@ -20,7 +18,7 @@ export interface Fight {
     fighter_2_flag: string;
     weight_class: string;
     winner: string;
-    method: Method;
+    method: string;
     round: number;
     time: string;
 }
@@ -28,7 +26,7 @@ export interface Fight {
 export interface FightResult {
     result_type: ResultType;
     winner_id: number | null;
-    method: Method;
+    method: string;
     round: number;
     time: string;
 }

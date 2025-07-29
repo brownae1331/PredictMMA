@@ -20,6 +20,7 @@ def get_flag_image_url(location: str) -> str:
         "Wales": "gb-wls",
         "Northern Ireland": "gb-nir",
         "Russia": "ru",
+        "South Korea": "kr",
     }
 
     country_name = location.split(",")[-1].strip()

@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from app.schemas.predict_schemas import Method
 from enum import Enum
 
 class ResultType(str, Enum):
@@ -21,13 +20,13 @@ class Fight(BaseModel):
     fighter_2_flag: str
     weight_class: str
     winner: str
-    method: Method
+    method: str
     round: int
     time: str
 
 class FightResult(BaseModel):
     result_type: ResultType
     winner_id: int | None
-    method: Method
+    method: str
     round: int
     time: str

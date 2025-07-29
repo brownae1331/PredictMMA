@@ -164,7 +164,9 @@ class SherdogScraper:
             match_number = int(
                 "".join(filter(str.isdigit, resume_cells[0].get_text(strip=True)))
             )
-            fight_method = resume_cells[1].get_text(" ", strip=True)
+
+            raw_method = resume_cells[1].get_text(" ", strip=True)
+            fight_method = re.sub(r"^Method\s+", "", raw_method, flags=re.IGNORECASE)
             fight_round = int(
                 "".join(filter(str.isdigit, resume_cells[3].get_text(strip=True)))
             )
@@ -225,7 +227,9 @@ class SherdogScraper:
             else:
                 fight_winner = "draw"
 
-            fight_method = tds[4].find("b").get_text(" ", strip=True)
+            # Clean up method string as above
+            raw_method_td = tds[4].find("b").get_text(" ", strip=True)
+            fight_method = re.sub(r"^Method\s+", "", raw_method_td, flags=re.IGNORECASE)
 
             fight_round_val = int(
                 "".join(filter(str.isdigit, tds[5].get_text(strip=True)))

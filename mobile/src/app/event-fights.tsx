@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Fight } from '../types/fight_types';
-import { getFightsByEvent } from '../lib/api/fight_api';
+import { Fight, FightResult, ResultType } from '../types/fight_types';
+import { getFightResultById, getFightsByEvent } from '../lib/api/fight_api';
 import { formatFighterName } from '../lib/utils/uiUtils';
 
 export default function EventFightsScreen() {
     const [fights, setFights] = useState<Fight[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fightResults, setFightResults] = useState<Record<number, FightResult | null>>({});
     const [error, setError] = useState<string | null>(null);
 
     const { event_id } = useLocalSearchParams();
@@ -23,6 +24,18 @@ export default function EventFightsScreen() {
             setError(null);
             const fetchedFights = await getFightsByEvent(Number(event_id));
             setFights(fetchedFights);
+
+            const resultsArray = await Promise.all(
+                fetchedFights.map((fight) =>
+                    getFightResultById(fight.id).catch(() => null)
+                )
+            );
+
+            const resultsMap: Record<number, FightResult | null> = {};
+            resultsArray.forEach((result, idx) => {
+                resultsMap[fetchedFights[idx].id] = result;
+            });
+            setFightResults(resultsMap);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
@@ -31,20 +44,27 @@ export default function EventFightsScreen() {
     };
 
     const handleFightPress = (fight_id: number) => {
+        if (fightResults[fight_id]) {
+            return;
+        }
+
         router.push({
             pathname: '/make-prediction',
             params: {
-                fight_id: fight_id
-            }
+                fight_id,
+            },
         });
     };
 
     const renderFightCard = (fight: Fight, index: number) => {
+        const fightResult = fightResults[fight.id];
+        const isWin = fightResult && fightResult.result_type === ResultType.WIN;
+        const isDrawOrNC = fightResult && !isWin;
         const fighter1Name = formatFighterName(fight.fighter_1_name);
         const fighter2Name = formatFighterName(fight.fighter_2_name);
 
         return (
-            <TouchableOpacity key={index} style={styles.fightCard} onPress={() => handleFightPress(fight.id)} activeOpacity={0.8}>
+            <TouchableOpacity key={index} style={styles.fightCard} onPress={() => handleFightPress(fight.id)} activeOpacity={0.8} disabled={fightResult !== null}>
                 <View style={styles.fightHeader}>
                     <Text style={styles.fightWeight}>{fight.weight_class}</Text>
                 </View>
@@ -54,12 +74,22 @@ export default function EventFightsScreen() {
                         {fight.fighter_1_image ? (
                             <Image
                                 source={{ uri: fight.fighter_1_image }}
-                                style={styles.fighterImage}
+                                style={[
+                                    styles.fighterImage,
+                                    isWin && fightResult.winner_id === fight.fighter_1_id && styles.winnerImage,
+                                    isWin && fightResult.winner_id !== fight.fighter_1_id && styles.loserImage,
+                                    isDrawOrNC && styles.drawImage
+                                ]}
                                 contentFit="cover"
                                 contentPosition="top"
                             />
                         ) : (
-                            <View style={styles.fighterImage} />
+                            <View style={[
+                                styles.fighterImage,
+                                isWin && fightResult.winner_id === fight.fighter_1_id && styles.winnerImage,
+                                isWin && fightResult.winner_id !== fight.fighter_1_id && styles.loserImage,
+                                isDrawOrNC && styles.drawImage
+                            ]} />
                         )}
                         <View style={styles.fighterInfoRow}>
                             {fight.fighter_1_flag ? (
@@ -91,12 +121,22 @@ export default function EventFightsScreen() {
                         {fight.fighter_2_image ? (
                             <Image
                                 source={{ uri: fight.fighter_2_image }}
-                                style={styles.fighterImage}
+                                style={[
+                                    styles.fighterImage,
+                                    isWin && fightResult.winner_id === fight.fighter_2_id && styles.winnerImage,
+                                    isWin && fightResult.winner_id !== fight.fighter_2_id && styles.loserImage,
+                                    isDrawOrNC && styles.drawImage
+                                ]}
                                 contentFit="cover"
                                 contentPosition="top"
                             />
                         ) : (
-                            <View style={styles.fighterImage} />
+                            <View style={[
+                                styles.fighterImage,
+                                isWin && fightResult.winner_id === fight.fighter_2_id && styles.winnerImage,
+                                isWin && fightResult.winner_id !== fight.fighter_2_id && styles.loserImage,
+                                isDrawOrNC && styles.drawImage
+                            ]} />
                         )}
                         <View style={styles.fighterInfoRow}>
                             {fight.fighter_2_flag ? (
@@ -118,6 +158,12 @@ export default function EventFightsScreen() {
                         ) : null}
                     </View>
                 </View>
+                {/* Fight Result */}
+                {fightResult && (
+                    <View style={styles.resultContainer}>
+                        <Text style={styles.resultText}>{`${fightResult.method} | Round ${fightResult.round} | ${fightResult.time}`}</Text>
+                    </View>
+                )}
             </TouchableOpacity>
         );
     };
@@ -253,6 +299,33 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         backgroundColor: '#fafafa',
     },
+    winnerImage: {
+        borderColor: '#28A745',
+        borderWidth: 3,
+        shadowColor: '#28A745',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 6,
+    },
+    drawImage: {
+        borderColor: '#999',
+        borderWidth: 3,
+        shadowColor: '#999',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 6,
+    },
+    loserImage: {
+        borderColor: '#FF3B30', // system red shade
+        borderWidth: 3,
+        shadowColor: '#FF3B30',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 6,
+    },
     fighterInfoRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -299,6 +372,18 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: '#666',
+    },
+    resultContainer: {
+        marginTop: 12,
+        alignItems: 'center',
+        paddingTop: 6,
+        borderTopWidth: 1,
+        borderTopColor: '#eee',
+    },
+    resultText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#444',
     },
     eventDate: {
         fontSize: 14,
