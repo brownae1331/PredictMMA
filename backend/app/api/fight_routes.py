@@ -4,7 +4,7 @@ from app.db.models import models
 from app.schemas.fight_schemas import Fight, FightResult, ResultType
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from app.core.utils.string_utils import simplify_method, get_flag_image_url
+from app.core.utils.string_utils import get_flag_image_url
 
 router = APIRouter()
 
@@ -58,7 +58,7 @@ def get_fights_by_event(event_id: int, db: db_dependency) -> list[Fight]:
             fighter_2_flag=get_flag_image_url(fight_fighter_2.country),
             weight_class=fight.weight_class,
             winner=fight.winner,
-            method=simplify_method(fight.method),
+            method=fight.method,
             round=fight.round,
             time=fight.time
         ))
@@ -110,7 +110,7 @@ def get_fight_by_id(fight_id: int, db: db_dependency) -> Fight:
         fighter_2_flag=get_flag_image_url(fight_fighter_2.country),
         weight_class=db_fight.weight_class,
         winner=db_fight.winner,
-        method=simplify_method(db_fight.method),
+        method=db_fight.method,
         round=db_fight.round,
         time=db_fight.time
     )
@@ -146,7 +146,7 @@ def get_fight_result_by_id(fight_id: int, db: db_dependency) -> FightResult | No
     return FightResult(
         result_type=result_type,
         winner_id=winner_id,
-        method=simplify_method(db_fight.method),
+        method=db_fight.method,
         round=db_fight.round,
         time=db_fight.time
     )

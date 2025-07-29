@@ -1,10 +1,8 @@
 from typing import List
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.services.sherdog_scraper import SherdogScraper
-from app.services.ufc_ranking_scraper import UFCRankingScraper
 from app.db.models.models import Event as EventModel, Fight as FightModel, Fighter as FighterModel
 from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSchema, Fighter as FighterSchema
 
@@ -95,22 +93,9 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
         """
         fighter_row = db.query(FighterModel).filter_by(url=fighter_url).first()
         if fighter_row:
-            if fighter_url != "unknown":
-                print(f"    ↪ Updating fighter stats: {fighter_url}")
-                fighter_data: FighterSchema = scraper.get_fighter_stats(fighter_url)
-                fighter_row.name = fighter_data.name
-                fighter_row.nickname = fighter_data.nickname
-                fighter_row.image_url = fighter_data.image_url
-                fighter_row.record = fighter_data.record
-                fighter_row.country = fighter_data.country
-                fighter_row.city = fighter_data.city
-                fighter_row.age = fighter_data.age
-                fighter_row.dob = fighter_data.dob
-                fighter_row.height = fighter_data.height
-                fighter_row.weight_class = fighter_data.weight_class
-                fighter_row.association = fighter_data.association
-                db.flush()
-                print(f"      ✓ Updated fighter: {fighter_data.name}")
+            # Fighter already exists in the database; return it without refreshing
+            # stats. A separate service is responsible for periodic fighter
+            # data refreshes.
             return fighter_row
 
         if fighter_url == "unknown":
@@ -170,8 +155,12 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
 
     db.commit()
 
-    # 3) RANKINGS ──────────────────────────────────────────────────────────
-    _update_fighter_rankings(db)
+    # Finished processing fights; fighter rankings are refreshed in a separate
+    # maintenance task, so we do not update them here.
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Helper functions
 
 
 def _upsert_fights(
@@ -248,30 +237,4 @@ def _upsert_fights(
             )
             db.delete(db_fight)
 
-    db.flush()
-
-
-def _update_fighter_rankings(db: Session) -> None:
-    """Fetch current UFC rankings and update Fighter rows accordingly."""
-    print("\nFetching current UFC rankings …")
-    ranking_scraper = UFCRankingScraper()
-    rankings_dict = ranking_scraper.get_ufc_rankings()
-
-    print("Persisting fighter rankings to DB …")
-    updated = 0
-
-    for weight_class, ranked_fighters in rankings_dict.items():
-        for name, rank in ranked_fighters:
-            fighter_row = (
-                db.query(FighterModel)
-                .filter(func.lower(FighterModel.name) == name.lower())
-                .filter(FighterModel.weight_class.ilike(f"%{weight_class}%"))
-                .first()
-            )
-
-            if fighter_row:
-                fighter_row.ranking = rank
-                updated += 1
-
-    db.commit()
-    print(f"  ✓ Updated rankings for {updated} fighters.") 
+    db.flush() 
