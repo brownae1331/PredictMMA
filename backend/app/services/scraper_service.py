@@ -2,7 +2,7 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from app.services.sherdog_scraper import SherdogScraper
+from app.services.scrapers.sherdog_scraper import SherdogScraper
 from app.db.models.models import Event as EventModel, Fight as FightModel, Fighter as FighterModel
 from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSchema, Fighter as FighterSchema
 
@@ -107,7 +107,6 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
                 record="0-0-0, 0 NC",
                 country="",
                 city="",
-                age=None,
                 dob=None,
                 height="",
                 weight_class="",
@@ -128,7 +127,6 @@ def scrape_ufc_data(db: Session, *, scrape_previous: bool = True, scrape_upcomin
             record=fighter_data.record,
             country=fighter_data.country,
             city=fighter_data.city,
-            age=fighter_data.age,
             dob=fighter_data.dob,
             height=fighter_data.height,
             weight_class=fighter_data.weight_class,

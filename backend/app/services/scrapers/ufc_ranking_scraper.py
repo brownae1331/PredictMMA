@@ -9,7 +9,7 @@ class UFCRankingScraper:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         }
 
-    def get_ufc_rankings(self) -> dict:
+    def get_ufc_rankings(self) -> dict[str, list[tuple[str, str]]]:
         scraper = cloudscraper.create_scraper()
         response = scraper.get(self.base_url, headers=self.headers)
         soup = BeautifulSoup(response.text, "html.parser")
