@@ -354,7 +354,6 @@ class SherdogScraper:
                 ranking="",
                 country="",
                 city="",
-                age=0,
                 dob=None,
                 height="",
                 weight_class="",
@@ -381,10 +380,6 @@ class SherdogScraper:
         bio_holder = soup.find("div", class_="bio-holder")
         bio_holder_trs = bio_holder.find_all("tr")
 
-        age = bio_holder_trs[0].find("b").text.strip() if bio_holder_trs[0].find("b") else ""
-        if age == "N/A":
-            age = 0
-
         dob_str = bio_holder_trs[0].find("span", itemprop="birthDate").text.strip() if bio_holder_trs[0].find("span", itemprop="birthDate") else ""
         dob = datetime.strptime(dob_str, "%b %d, %Y").date() if dob_str else None
         
@@ -404,7 +399,6 @@ class SherdogScraper:
             ranking="",
             country=country,
             city=city,
-            age=age,
             dob=dob,
             height=height,
             weight_class=weight_class,

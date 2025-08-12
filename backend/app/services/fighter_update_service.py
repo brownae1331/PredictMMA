@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.db.models.models import Fighter as FighterModel
-from app.services.sherdog_scraper import SherdogScraper
-from app.services.ufc_ranking_scraper import UFCRankingScraper
+from app.services.scrapers.sherdog_scraper import SherdogScraper
+from app.services.scrapers.ufc_ranking_scraper import UFCRankingScraper
 
 
 def update_all_fighters(db: Session, *, update_rankings: bool = True) -> None:
@@ -44,14 +44,12 @@ def update_all_fighters(db: Session, *, update_rankings: bool = True) -> None:
             skipped_count += 1
             continue
 
-
         fighter_row.name = fighter_data.name
         fighter_row.nickname = fighter_data.nickname
         fighter_row.image_url = fighter_data.image_url
         fighter_row.record = fighter_data.record
         fighter_row.country = fighter_data.country
         fighter_row.city = fighter_data.city
-        fighter_row.age = fighter_data.age
         fighter_row.dob = fighter_data.dob
         fighter_row.height = fighter_data.height
         fighter_row.weight_class = fighter_data.weight_class
