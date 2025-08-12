@@ -20,6 +20,7 @@ class Event(Base):
     date = Column(DateTime(timezone=True))
     location = Column(String)
     organizer = Column(String)
+    last_scraped_at = Column(DateTime(timezone=True), nullable=True)
 
     fights = relationship("Fight", back_populates="event", cascade="all, delete-orphan")
 
@@ -35,11 +36,11 @@ class Fighter(Base):
     ranking = Column(String)
     country = Column(String)
     city = Column(String)
-    age = Column(Integer)
     dob = Column(Date)
     height = Column(String)
     weight_class = Column(String)
     association = Column(String)
+    last_scraped_at = Column(DateTime(timezone=True), nullable=True)    
 
     __table_args__ = (
         UniqueConstraint("name", "weight_class", name="uix_name_weight_class"),
@@ -60,7 +61,8 @@ class Fight(Base):
     method = Column(String)
     round = Column(Integer)
     time = Column(String)
-
+    last_scraped_at = Column(DateTime(timezone=True), nullable=True)
+    
     __table_args__ = (
         UniqueConstraint("event_id", "match_number", name="uix_event_match_number"),
     )

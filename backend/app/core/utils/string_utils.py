@@ -4,9 +4,10 @@ import pycountry
 
 def strip_accents(text: str) -> str:
     """Return a copy of *text* with accents/diacritics removed."""
-    
-    if not isinstance(text, str):
-        return text
+
+    if not text:
+        return ""
+
     normalized = unicodedata.normalize("NFKD", text)
     return "".join(c for c in normalized if not unicodedata.combining(c))
 
