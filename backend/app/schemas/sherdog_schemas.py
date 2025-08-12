@@ -17,7 +17,6 @@ class Fighter(BaseModel):
     ranking: str
     country: str
     city: str
-    age: int
     dob: date | None
     height: str
     weight_class: str
