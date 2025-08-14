@@ -6,8 +6,7 @@ from app.api.auth_routes import router as auth_routes
 from app.api.predict_routes import router as predict_routes
 from app.api.event_routes import router as event_routes
 from app.api.fight_routes import router as fight_routes
-from app.services.scraper_service import scrape_ufc_data
-from app.services.fighter_update_service import update_all_fighters
+from app.services.orchestrator.ufc_coordinator import UFCScraperCoordinator
 from sqlalchemy.orm import Session
 
 app = FastAPI()
@@ -24,6 +23,6 @@ app.include_router(fight_routes, prefix="/fights", tags=["Fights"])
 @app.get("/")
 def read_root(db: Session = Depends(get_db)):
     """Root endpoint: trigger a full UFC data scrape and seeding operation."""
-    scrape_ufc_data(db, scrape_previous=True, scrape_upcoming=True)
-    # update_all_fighters(db)
+    ufc_coordinator = UFCScraperCoordinator()
+    ufc_coordinator.sync_ufc_data(db)
     return {"message": "Database updated with latest UFC data."}
