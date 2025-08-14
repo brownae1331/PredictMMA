@@ -8,6 +8,7 @@ from app.api.event_routes import router as event_routes
 from app.api.fight_routes import router as fight_routes
 from app.services.orchestrator.ufc_coordinator import UFCScraperCoordinator
 from sqlalchemy.orm import Session
+from app.tasks.tasks import debug_ping
 
 app = FastAPI()
 
@@ -22,7 +23,19 @@ app.include_router(fight_routes, prefix="/fights", tags=["Fights"])
 
 @app.get("/")
 def read_root(db: Session = Depends(get_db)):
-    """Root endpoint: trigger a full UFC data scrape and seeding operation."""
+    """Root endpoint: trigger a full UFC data scrape and seeding operation (async via Celery)."""
     ufc_coordinator = UFCScraperCoordinator()
-    ufc_coordinator.sync_ufc_data(db)
-    return {"message": "Database updated with latest UFC data."}
+    task_id = ufc_coordinator.schedule_sync_ufc_data()
+    return {"message": "UFC sync scheduled.", "task_id": task_id}
+
+@app.get("/celery/ping")
+def celery_ping():
+    """Dispatch a quick debug task to verify the worker is alive."""
+    result = debug_ping.si("hello").delay()
+    return {"task_id": result.id}
+
+@app.get("/celery/result/{task_id}")
+def celery_result(task_id: str):
+    """Fetch the result/state of a task id."""
+    async_result = debug_ping.AsyncResult(task_id)
+    return {"state": async_result.state, "result": async_result.result}

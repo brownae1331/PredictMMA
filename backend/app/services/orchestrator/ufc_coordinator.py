@@ -1,5 +1,5 @@
-from datetime import datetime
 from sqlalchemy.orm import Session
+from celery import chain, group, chord
 from app.services.scrapers.ufc_sherdog_scraper import UFCSherdogScraper
 from app.services.scrapers.ufc_ranking_scraper import UFCRankingScraper
 from app.services.importers.events import EventsImporter
@@ -7,7 +7,12 @@ from app.services.importers.fights import FightsImporter
 from app.services.importers.fighters import FightersImporter
 from app.services.importers.rankings import RankingsImporter
 from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSchema, Fighter as FighterSchema
-from app.db.models.models import Event as EventModel, Fight as FightModel, Fighter as FighterModel
+from app.tasks.tasks import (
+    upsert_event as upsert_event_task,
+    upsert_fighter_task,
+    upsert_fight_task,
+    apply_rankings_task,
+)
 
 class UFCScraperCoordinator:
     """
@@ -82,3 +87,52 @@ class UFCScraperCoordinator:
         rankings_importer = RankingsImporter(db)
         rankings_importer.apply_rankings(rankings)
         db.commit()
+
+    def schedule_sync_ufc_data(self) -> str:
+        """
+        Build and dispatch a Celery DAG to sync UFC data in parallel while enforcing:
+        - Event upsert before fights of that event
+        - Both fighters upserted before their fight
+        - Rankings applied once after all events/fights complete
+        Returns the Celery result id for tracking.
+        """
+        previous_events: list[EventSchema] = self.sherdog_scraper.get_previous_ufc_events()
+        upcoming_events: list[EventSchema] = self.sherdog_scraper.get_upcoming_ufc_events()
+
+        seen_upcoming_urls: set[str] = {e.url for e in upcoming_events}
+        previous_events = [e for e in previous_events if e.url not in seen_upcoming_urls]
+        all_events: list[EventSchema] = upcoming_events + previous_events
+
+        def fight_workflow(fight: FightSchema):
+            print(f"Scheduling fight: {fight.fighter_1_url} vs {fight.fighter_2_url}")
+            fighter_1: FighterSchema = self.sherdog_scraper.get_fighter_stats(fight.fighter_1_url)
+            fighter_2: FighterSchema = self.sherdog_scraper.get_fighter_stats(fight.fighter_2_url)
+
+            fighters_group = group(
+                upsert_fighter_task.si(fighter_dict=fighter_1.model_dump(mode="json")),
+                upsert_fighter_task.si(fighter_dict=fighter_2.model_dump(mode="json")),
+            )
+            return chain(
+                fighters_group,
+                upsert_fight_task.si(fight_dict=fight.model_dump(mode="json")),
+            )
+
+        def event_workflow(event: EventSchema):
+            print(f"Scheduling event: {event.title}")
+            if event.url in seen_upcoming_urls:
+                fights: list[FightSchema] = self.sherdog_scraper.get_upcoming_event_fights(event.url)
+            else:
+                fights = self.sherdog_scraper.get_previous_event_fights(event.url)
+
+            per_fight_chains = [fight_workflow(f) for f in fights]
+            if per_fight_chains:
+                return chain(
+                    upsert_event_task.si(event_dict=event.model_dump(mode="json")),
+                    group(per_fight_chains),
+                )
+            else:
+                return upsert_event_task.si(event_dict=event.model_dump(mode="json"))
+
+        header = group([event_workflow(e) for e in all_events])
+        result = chord(header)(apply_rankings_task.si())
+        return result.id
