@@ -9,8 +9,8 @@ from urllib.parse import urljoin
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-class SherdogScraper:
-    """Scraper for Sherdog.com."""
+class UFCSherdogScraper:
+    """Scraper for UFC events on Sherdog.com."""
     
     UNKNOWN_FIGHTER_URL = "unknown"
 

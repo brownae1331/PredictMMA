@@ -9,8 +9,12 @@ class RankingsImporter:
 
     def __init__(self, db: Session):
         self.db = db
+        self.reset_rankings()
     
     def apply_rankings(self, rankings: dict[str, list[tuple[str, str]]]) -> None:
+        """
+        Applies the rankings to the fighters.
+        """
         for weight_class, entries in rankings.items():
             for name, rank in entries:
                 fighter = (
@@ -18,6 +22,15 @@ class RankingsImporter:
                     .filter_by(name=name, weight_class=weight_class)
                     .first()
                 )
-                if fighter:
-                    fighter.ranking = rank
-                    fighter.last_updated_at = datetime.now()
+                
+                if not fighter:
+                    raise ValueError(f"Fighter with name {name} and weight class {weight_class} not found")
+
+                fighter.ranking = rank
+                fighter.last_updated_at = datetime.now()
+
+    def reset_rankings(self) -> None:
+        """
+        Resets the rankings of all fighters.
+        """
+        self.db.query(FighterModel).update({"ranking": ""})
