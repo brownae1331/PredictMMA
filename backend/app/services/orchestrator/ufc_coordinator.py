@@ -24,7 +24,16 @@ class UFCScraperCoordinator:
         previous_events: list[EventSchema] = self.sherdog_scraper.get_previous_ufc_events()
         upcoming_events: list[EventSchema] = self.sherdog_scraper.get_upcoming_ufc_events()
 
-        all_events = upcoming_events + previous_events
+        seen_upcoming_urls: set[str] = set()
+        unique_upcoming_events: list[EventSchema] = []
+        for event in upcoming_events:
+            if event.url in seen_upcoming_urls:
+                continue
+            seen_upcoming_urls.add(event.url)
+            unique_upcoming_events.append(event)
+        upcoming_events = unique_upcoming_events
+
+        previous_events = [e for e in previous_events if e.url not in seen_upcoming_urls]
 
         for event in upcoming_events:
             print(f"Importing upcoming event: {event.title}")
