@@ -1,4 +1,5 @@
 import re
+import time
 import cloudscraper
 from bs4 import BeautifulSoup
 from typing import List
@@ -8,6 +9,7 @@ from app.schemas.sherdog_schemas import Event, Fight, Fighter
 from urllib.parse import urljoin
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+from dateutil import parser as dateutil_parser
 
 class UFCSherdogScraper:
     """Scraper for UFC events on Sherdog.com."""
@@ -16,9 +18,58 @@ class UFCSherdogScraper:
 
     def __init__(self):
         self.base_url = "https://www.sherdog.com"
+        # Reuse a single cloudscraper session to persist cookies and mimic a browser more closely
+        self.scraper = cloudscraper.create_scraper(
+            browser={"browser": "chrome", "platform": "windows", "mobile": False}
+        )
+        # Realistic headers help reduce chances of a 403 from Cloudflare
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Connection": "keep-alive",
+            "DNT": "1",
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.sherdog.com/",
         }
+
+    def _get(self, url: str, max_retries: int = 3):
+        """GET with simple retry/backoff and cookie warm-up for Cloudflare blocks."""
+        last_exc: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                response = self.scraper.get(url, headers=self.headers, timeout=30)
+                # If Cloudflare blocks (403) or we are being rate-limited (429), warm up cookies and retry
+                if response.status_code in (403, 429):
+                    try:
+                        # Visit base page to obtain/refresh cookies
+                        self.scraper.get(self.base_url + "/", headers=self.headers, timeout=30)
+                    except Exception:
+                        pass
+                    # Backoff and rotate the scraper session to refresh any tokens
+                    time.sleep(1.5 * (attempt + 1))
+                    self.scraper = cloudscraper.create_scraper(
+                        browser={"browser": "chrome", "platform": "windows", "mobile": False}
+                    )
+                    continue
+                response.raise_for_status()
+                return response
+            except Exception as exc:
+                last_exc = exc
+                time.sleep(1.5 * (attempt + 1))
+                # Recreate session on generic network errors
+                self.scraper = cloudscraper.create_scraper(
+                    browser={"browser": "chrome", "platform": "windows", "mobile": False}
+                )
+        # Exhausted retries
+        if last_exc:
+            raise last_exc
+        raise Exception("Request failed with no further detail")
 
     @staticmethod
     def _is_valid_href(href: str) -> bool:
@@ -38,30 +89,52 @@ class UFCSherdogScraper:
 
         while current_url:
             print(f"Scraping page {current_page}...")
-            scraper = cloudscraper.create_scraper()
-            response = scraper.get(current_url, headers=self.headers)
+            try:
+                response = self._get(current_url)
+            except Exception as exc:
+                print(f"Failed to fetch Sherdog recent events page: {exc}")
+                break
+
             soup = BeautifulSoup(response.text, "html.parser")
 
             events_container = soup.find("div", id="recent_tab")
+            if not events_container:
+                print("Sherdog layout changed or content blocked: 'recent_tab' not found")
+                break
             for tr in events_container.find_all("tr", itemtype="http://schema.org/Event"):
-                event_url = urljoin(self.base_url, tr.find("a", itemprop="url")["href"])
-                event_title = tr.find("span", itemprop="name").text.strip()
-                
-                start_raw  = tr.find("meta", itemprop="startDate")["content"]
-                dt = datetime.fromisoformat(start_raw)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                event_date = dt.astimezone(ZoneInfo("Europe/London"))
+                try:
+                    url_tag = tr.find("a", itemprop="url")
+                    name_tag = tr.find("span", itemprop="name")
+                    date_meta = tr.find("meta", itemprop="startDate")
+                    location_td = tr.find("td", itemprop="location")
 
-                location = tr.find("td", itemprop="location").get_text(" ", strip=True)
-                
-                events.append(Event(
-                    url=event_url,
-                    title=event_title,
-                    date=event_date,
-                    location=location,
-                    organizer="UFC",
-                ))
+                    if not url_tag or not name_tag or not date_meta:
+                        continue
+
+                    event_url = urljoin(self.base_url, url_tag["href"]) if url_tag and url_tag.get("href") else ""
+                    event_title = name_tag.text.strip() if name_tag else ""
+
+                    start_raw = date_meta.get("content", "")
+                    try:
+                        dt = dateutil_parser.isoparse(start_raw)
+                    except Exception:
+                        # Last resort: try stdlib
+                        dt = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    event_date = dt.astimezone(ZoneInfo("Europe/London"))
+
+                    location = location_td.get_text(" ", strip=True) if location_td else ""
+
+                    events.append(Event(
+                        url=event_url,
+                        title=event_title,
+                        date=event_date,
+                        location=location,
+                        organizer="UFC",
+                    ))
+                except Exception as row_exc:
+                    print(f"Skipping previous event row due to parse error: {row_exc}")
 
             pagination = events_container.find("span", class_="pagination")
             older_link = None
@@ -88,30 +161,50 @@ class UFCSherdogScraper:
         current_url = urljoin(self.base_url, "/organizations/Ultimate-Fighting-Championship-UFC-2")
         events = []
 
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(current_url, headers=self.headers)
+        try:
+            response = self._get(current_url)
+        except Exception as exc:
+            print(f"Failed to fetch Sherdog upcoming events page: {exc}")
+            return events
         soup = BeautifulSoup(response.text, "html.parser")
 
         events_container = soup.find("div", id="upcoming_tab")
+        if not events_container:
+            print("Sherdog layout changed or content blocked: 'upcoming_tab' not found")
+            return events
         for tr in events_container.find_all("tr", itemtype="http://schema.org/Event"):
-            event_url = urljoin(self.base_url, tr.find("a", itemprop="url")["href"])
-            event_title = tr.find("span", itemprop="name").text.strip()
+            try:
+                url_tag = tr.find("a", itemprop="url")
+                name_tag = tr.find("span", itemprop="name")
+                date_meta = tr.find("meta", itemprop="startDate")
+                location_td = tr.find("td", itemprop="location")
 
-            start_raw = tr.find("meta", itemprop="startDate")["content"]
-            dt = datetime.fromisoformat(start_raw)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            event_date = dt.astimezone(ZoneInfo("Europe/London"))
+                if not url_tag or not name_tag or not date_meta:
+                    continue
 
-            location = tr.find("td", itemprop="location").get_text(" ", strip=True)
+                event_url = urljoin(self.base_url, url_tag["href"]) if url_tag and url_tag.get("href") else ""
+                event_title = name_tag.text.strip() if name_tag else ""
 
-            events.append(Event(
-                url=event_url,
-                title=event_title,
-                date=event_date,
-                location=location,
-                organizer="UFC",
-            ))
+                start_raw = date_meta.get("content", "")
+                try:
+                    dt = dateutil_parser.isoparse(start_raw)
+                except Exception:
+                    dt = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                event_date = dt.astimezone(ZoneInfo("Europe/London"))
+
+                location = location_td.get_text(" ", strip=True) if location_td else ""
+
+                events.append(Event(
+                    url=event_url,
+                    title=event_title,
+                    date=event_date,
+                    location=location,
+                    organizer="UFC",
+                ))
+            except Exception as row_exc:
+                print(f"Skipping upcoming event row due to parse error: {row_exc}")
         
         return events
     
@@ -120,8 +213,11 @@ class UFCSherdogScraper:
         Scrapes the fights for a given previous event from Sherdog.
         Returns a list of fights.
         """
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(event_url, headers=self.headers)
+        try:
+            response = self._get(event_url)
+        except Exception as exc:
+            print(f"Failed to fetch Sherdog event page for previous fights: {exc}")
+            return []
         soup = BeautifulSoup(response.text, "html.parser")
         fights = []
 
@@ -258,8 +354,11 @@ class UFCSherdogScraper:
         Scrapes the fights for a given upcoming event from Sherdog.
         Returns a list of fights.
         """
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(event_url, headers=self.headers)
+        try:
+            response = self._get(event_url)
+        except Exception as exc:
+            print(f"Failed to fetch Sherdog event page for upcoming fights: {exc}")
+            return []
         soup = BeautifulSoup(response.text, "html.parser")
         fights = []
 
@@ -359,8 +458,7 @@ class UFCSherdogScraper:
                 weight_class="",
                 association="",
             )
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(fighter_url, headers=self.headers)
+        response = self._get(fighter_url)
         soup = BeautifulSoup(response.text, "html.parser")
 
         name = strip_accents(soup.find("h1", itemprop="name").text.strip())

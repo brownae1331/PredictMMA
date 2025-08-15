@@ -44,6 +44,11 @@ app.include_router(fight_routes, prefix="/fights", tags=["Fights"])
 def read_root(db: Session = Depends(get_db)):
     """Root endpoint: trigger a full UFC data scrape and seeding operation (async via Celery)."""
     ufc_coordinator = UFCScraperCoordinator()
-    print("Starting UFC sync...")
-    task_id = ufc_coordinator.test_task()
-    return {"message": "UFC sync scheduled.", "task_id": task_id}
+    try:
+        print("Starting UFC sync...")
+        task_id = ufc_coordinator.test_task()
+        return {"message": "UFC sync scheduled.", "task_id": task_id}
+    except Exception as exc:
+        # Avoid crashing the request handler on transient scraper/celery errors
+        print(f"Failed to schedule UFC sync: {exc}")
+        return {"message": "Failed to schedule UFC sync", "error": str(exc)}
