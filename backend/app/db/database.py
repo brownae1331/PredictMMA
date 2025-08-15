@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-URL_DATABASE = "postgresql://postgres:Aeb130805@localhost:5432/predictmma"
+URL_DATABASE = "postgresql://postgres:postgres@localhost:5432/predictmma"
 
 engine = create_engine(URL_DATABASE)
 
