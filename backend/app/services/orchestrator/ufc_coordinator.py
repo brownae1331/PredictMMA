@@ -138,5 +138,6 @@ class UFCScraperCoordinator:
         return result.id
 
     def test_task(self):
-        upcoming_event = self.sherdog_scraper.get_upcoming_ufc_events()[0]
-        return upsert_event.delay(event=upcoming_event.model_dump(mode="json")).id
+        upcoming_events = self.sherdog_scraper.get_upcoming_ufc_events()
+        print(upcoming_events)
+        # return upsert_event.delay(event=upcoming_events[0].model_dump(mode="json")).id
