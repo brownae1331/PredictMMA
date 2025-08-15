@@ -20,28 +20,28 @@ def _session():
         db.close()
 
 @celery_app.task(name="tasks.imports.upsert_event")
-def upsert_event(event_dict: dict) -> None:
-    print("[Celery] upsert_event START", event_dict.get("title"))
+def upsert_event(event: EventSchema) -> None:
+    print("[Celery] upsert_event START", event.title)
     db = next(_session())
-    EventsImporter(db).upsert(EventSchema(**event_dict))
+    EventsImporter(db).upsert(event)
     db.commit()
-    print("[Celery] upsert_event DONE", event_dict.get("title"))
+    print("[Celery] upsert_event DONE", event.title)
 
 @celery_app.task(name="tasks.imports.upsert_fighter")
-def upsert_fighter_task(fighter_dict: dict) -> None:
-    print("[Celery] upsert_fighter START", fighter_dict.get("name"))
+def upsert_fighter_task(fighter: FighterSchema) -> None:
+    print("[Celery] upsert_fighter START", fighter.name)
     db = next(_session())
-    FightersImporter(db).upsert(FighterSchema(**fighter_dict))
+    FightersImporter(db).upsert(fighter)
     db.commit()
-    print("[Celery] upsert_fighter DONE", fighter_dict.get("name"))
+    print("[Celery] upsert_fighter DONE", fighter.name)
 
 @celery_app.task(name="tasks.imports.upsert_fight")
-def upsert_fight_task(fight_dict: dict) -> None:
-    print("[Celery] upsert_fight START", fight_dict.get("event_url"), fight_dict.get("match_number"))
+def upsert_fight_task(fight: FightSchema) -> None:
+    print("[Celery] upsert_fight START", fight.event_url, fight.match_number)
     db = next(_session())
-    FightsImporter(db).upsert(FightSchema(**fight_dict))
+    FightsImporter(db).upsert(fight)
     db.commit()
-    print("[Celery] upsert_fight DONE", fight_dict.get("event_url"), fight_dict.get("match_number"))
+    print("[Celery] upsert_fight DONE", fight.event_url, fight.match_number)
 
 @celery_app.task(name="tasks.imports.apply_rankings")
 def apply_rankings_task() -> None:

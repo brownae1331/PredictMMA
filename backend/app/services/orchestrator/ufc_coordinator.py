@@ -109,12 +109,12 @@ class UFCScraperCoordinator:
             fighter_2: FighterSchema = self.sherdog_scraper.get_fighter_stats(fight.fighter_2_url)
 
             fighters_group = group(
-                upsert_fighter_task.si(fighter_dict=fighter_1.model_dump(mode="json")),
-                upsert_fighter_task.si(fighter_dict=fighter_2.model_dump(mode="json")),
+                upsert_fighter_task.si(fighter=fighter_1),
+                upsert_fighter_task.si(fighter=fighter_2),
             )
             return chain(
                 fighters_group,
-                upsert_fight_task.si(fight_dict=fight.model_dump(mode="json")),
+                upsert_fight_task.si(fight=fight),
             )
 
         def event_workflow(event: EventSchema):
@@ -127,11 +127,11 @@ class UFCScraperCoordinator:
             per_fight_chains = [fight_workflow(f) for f in fights]
             if per_fight_chains:
                 return chain(
-                    upsert_event_task.si(event_dict=event.model_dump(mode="json")),
+                    upsert_event_task.si(event=event),
                     group(per_fight_chains),
                 )
             else:
-                return upsert_event_task.si(event_dict=event.model_dump(mode="json"))
+                return upsert_event_task.si(event=event)
 
         header = group([event_workflow(e) for e in all_events])
         result = chord(header)(apply_rankings_task.si())

@@ -3,8 +3,9 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.orm import Session
+import os
 
-URL_DATABASE = "postgresql://postgres:Aeb130805@localhost:5432/predictmma"
+URL_DATABASE = os.getenv("DATABASE_URL", "postgresql://postgres:Aeb130805@localhost:5432/predictmma")
 
 engine = create_engine(URL_DATABASE)
 
