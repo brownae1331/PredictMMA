@@ -8,10 +8,10 @@ from app.services.importers.fighters import FightersImporter
 from app.services.importers.rankings import RankingsImporter
 from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSchema, Fighter as FighterSchema
 from app.tasks.tasks import (
-    upsert_event as upsert_event_task,
-    upsert_fighter_task,
-    upsert_fight_task,
-    apply_rankings_task,
+    upsert_event,
+    upsert_fighter,
+    upsert_fight,
+    apply_rankings,
 )
 
 class UFCScraperCoordinator:
@@ -109,12 +109,12 @@ class UFCScraperCoordinator:
             fighter_2: FighterSchema = self.sherdog_scraper.get_fighter_stats(fight.fighter_2_url)
 
             fighters_group = group(
-                upsert_fighter_task.si(fighter=fighter_1),
-                upsert_fighter_task.si(fighter=fighter_2),
+                upsert_fighter.si(fighter=fighter_1.model_dump(mode="json")),
+                upsert_fighter.si(fighter=fighter_2.model_dump(mode="json")),
             )
             return chain(
                 fighters_group,
-                upsert_fight_task.si(fight=fight),
+                upsert_fight.si(fight=fight.model_dump(mode="json")),
             )
 
         def event_workflow(event: EventSchema):
@@ -127,12 +127,16 @@ class UFCScraperCoordinator:
             per_fight_chains = [fight_workflow(f) for f in fights]
             if per_fight_chains:
                 return chain(
-                    upsert_event_task.si(event=event),
+                    upsert_event.si(event=event.model_dump(mode="json")),
                     group(per_fight_chains),
                 )
             else:
-                return upsert_event_task.si(event=event)
+                return upsert_event.si(event=event.model_dump(mode="json"))
 
         header = group([event_workflow(e) for e in all_events])
-        result = chord(header)(apply_rankings_task.si())
+        result = chord(header)(apply_rankings.si())
         return result.id
+
+    def test_task(self):
+        upcoming_event = self.sherdog_scraper.get_upcoming_ufc_events()[0]
+        return upsert_event.delay(event=upcoming_event.model_dump(mode="json")).id

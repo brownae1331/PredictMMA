@@ -1,8 +1,8 @@
 from celery import Celery
-import os
 
-broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-result_backend = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+# Default to the docker-compose Redis service when env vars are not provided
+broker_url = "redis://redis:6379/0"
+result_backend = "redis://redis:6379/1"
 
 celery_app = Celery(
     "predictmma",
