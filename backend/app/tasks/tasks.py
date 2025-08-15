@@ -7,11 +7,6 @@ from app.services.importers.rankings import RankingsImporter
 from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSchema, Fighter as FighterSchema
 from app.services.scrapers.ufc_ranking_scraper import UFCRankingScraper
 
-@celery_app.task(name="tasks.debug.ping")
-def debug_ping(message: str = "ping") -> str:
-    print(f"debug_ping: {message}")
-    return "pong"
-
 def _session():
     db = sessionLocal()
     try:
@@ -20,31 +15,34 @@ def _session():
         db.close()
 
 @celery_app.task(name="tasks.imports.upsert_event")
-def upsert_event(event: EventSchema) -> None:
-    print("[Celery] upsert_event START", event.title)
+def upsert_event(event: dict) -> None:
+    event_model = EventSchema.model_validate(event)
+    print("[Celery] upsert_event START", event_model.title)
     db = next(_session())
-    EventsImporter(db).upsert(event)
+    EventsImporter(db).upsert(event_model)
     db.commit()
-    print("[Celery] upsert_event DONE", event.title)
+    print("[Celery] upsert_event DONE", event_model.title)
 
 @celery_app.task(name="tasks.imports.upsert_fighter")
-def upsert_fighter_task(fighter: FighterSchema) -> None:
-    print("[Celery] upsert_fighter START", fighter.name)
+def upsert_fighter(fighter: dict) -> None:
+    fighter_model = FighterSchema.model_validate(fighter)
+    print("[Celery] upsert_fighter START", fighter_model.name)
     db = next(_session())
-    FightersImporter(db).upsert(fighter)
+    FightersImporter(db).upsert(fighter_model)
     db.commit()
-    print("[Celery] upsert_fighter DONE", fighter.name)
+    print("[Celery] upsert_fighter DONE", fighter_model.name)
 
 @celery_app.task(name="tasks.imports.upsert_fight")
-def upsert_fight_task(fight: FightSchema) -> None:
-    print("[Celery] upsert_fight START", fight.event_url, fight.match_number)
+def upsert_fight(fight: dict) -> None:
+    fight_model = FightSchema.model_validate(fight)
+    print("[Celery] upsert_fight START", fight_model.event_url, fight_model.match_number)
     db = next(_session())
-    FightsImporter(db).upsert(fight)
+    FightsImporter(db).upsert(fight_model)
     db.commit()
-    print("[Celery] upsert_fight DONE", fight.event_url, fight.match_number)
+    print("[Celery] upsert_fight DONE", fight_model.event_url, fight_model.match_number)
 
 @celery_app.task(name="tasks.imports.apply_rankings")
-def apply_rankings_task() -> None:
+def apply_rankings() -> None:
     print("[Celery] apply_rankings START")
     db = next(_session())
     rankings = UFCRankingScraper().get_ufc_rankings()
