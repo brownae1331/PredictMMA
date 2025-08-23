@@ -46,8 +46,8 @@ def read_root(db: Session = Depends(get_db)):
     ufc_coordinator = UFCScraperCoordinator()
     try:
         print("Starting UFC sync...")
-        task_id = ufc_coordinator.test_task()
-        return {"message": "UFC sync scheduled.", "task_id": task_id}
+        ufc_coordinator.schedule_sync_ufc_data()
+        return {"message": "UFC sync scheduled."}
     except Exception as exc:
         # Avoid crashing the request handler on transient scraper/celery errors
         print(f"Failed to schedule UFC sync: {exc}")
