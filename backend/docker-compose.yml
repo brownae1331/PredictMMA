@@ -28,6 +28,7 @@ services:
   redis:
     image: redis:7
     container_name: redis-container
+    command: ["sh", "-c", "rm -f /data/* && exec redis-server --save '' --appendonly no"]
     restart: unless-stopped
     ports:
       - "6379:6379"
