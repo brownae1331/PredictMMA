@@ -8,12 +8,18 @@ from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSche
 from app.services.scrapers.ufc_ranking_scraper import UFCRankingScraper
 from app.services.scrapers.ufc_sherdog_scraper import UFCSherdogScraper
 from celery import group, chord
+from contextlib import contextmanager
 
 
-def _session():
+@contextmanager
+def session_scope():
     db = sessionLocal()
     try:
         yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -33,22 +39,21 @@ def sync_ufc_data(self):
 
     jobs = []
     for event in upcoming_events:
-        jobs.append(import_event.s(event.model_dump(mode="json"), is_upcoming=True))
+        jobs.append(import_event.s(event.model_dump(mode="json"), is_upcoming=True).set(queue="db"))
     for event in previous_events:
-        jobs.append(import_event.s(event.model_dump(mode="json"), is_upcoming=False))
+        jobs.append(import_event.s(event.model_dump(mode="json"), is_upcoming=False).set(queue="db"))
 
     if not jobs:
         print("No events found to import")
         return {"status": "no_events"}
 
-    group_result = group(jobs).apply_async()
-    print(f"Scheduled {len(jobs)} event import tasks")
+    callback = import_rankings.s()
+    chord_result = chord(group(jobs))(callback)
+    print(f"Scheduled {len(jobs)} event import tasks with rankings callback")
 
-    import_rankings.apply_async()
+    return {"status": "scheduled", "num_events": len(jobs), "job_id": chord_result.id}
 
-    return {"status": "scheduled", "num_events": len(jobs), "job_id": group_result.id}
-
-@celery_app.task(bind=True, name="import_event")
+@celery_app.task(bind=True, name="import_event", ignore_result=True)
 def import_event(self, event: dict, is_upcoming: bool):
     """
     Upsert the event.
@@ -56,27 +61,45 @@ def import_event(self, event: dict, is_upcoming: bool):
     Schedule each fight import in parallel.
     """
     scraper = UFCSherdogScraper()
-    db = next(_session())
-    try:
-        print(f"Importing event: {event.get('title')}")
-        event_importer = EventsImporter(db)
-        event_importer.upsert(EventSchema(**event))
+    with session_scope() as db:
+        try:
+            print(f"Importing event: {event.get('title')}")
+            event_importer = EventsImporter(db)
+            event_importer.upsert(EventSchema(**event))
+            db.commit()
 
-        if is_upcoming:
-            fights = scraper.get_upcoming_event_fights(event["url"])
-        else:
-            fights = scraper.get_previous_event_fights(event["url"])
+            if is_upcoming:
+                fights = scraper.get_upcoming_event_fights(event["url"])
+            else:
+                fights = scraper.get_previous_event_fights(event["url"])
 
-        if fights:
-            job = group(import_fight.s(f.model_dump(mode="json")) for f in fights).apply_async()
-            print(f"Scheduled {len(fights)} fight import imports for event: {event['title']}")
-        else:
-            print(f"No fights found for event: {event['title']}")
-        
-        return {"event_url": event["url"], "num_fights": len(fights)}
-    except Exception as exc:
-        print(f"Error importing event: {event['title']}")
-        raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))
+            if not fights:
+                print(f"No fights found for event: {event['title']}")
+                return {"event_url": event["url"], "num_fights": 0}
+
+            # Build a unique set of fighter URLs across all fights for this event
+            unique_fighter_urls: set[str] = set()
+            for f in fights:
+                if f.fighter_1_url:
+                    unique_fighter_urls.add(f.fighter_1_url)
+                if f.fighter_2_url:
+                    unique_fighter_urls.add(f.fighter_2_url)
+
+            header = group(
+                import_fighter.s(url).set(queue="scrape") for url in unique_fighter_urls
+            )
+            body = group(
+                upsert_fight.s(f.model_dump(mode="json")).set(queue="db") for f in fights
+            )
+            chord(header)(body)
+            print(
+                f"Scheduled {len(unique_fighter_urls)} fighter imports and {len(fights)} fight upserts for event: {event['title']}"
+            )
+
+            return {"event_url": event["url"], "num_fighters": len(unique_fighter_urls), "num_fights": len(fights)}
+        except Exception as exc:
+            print(f"Error importing event: {event['title']}")
+            raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))
 
 @celery_app.task(bind=True, name="import_fighter", max_retries=3)
 def import_fighter(self, fighter_url: str):
@@ -84,39 +107,37 @@ def import_fighter(self, fighter_url: str):
     Scrape fighter stats and upsert the fighter.
     Returns a small dict that identifies the fighter.
     """
-    db = next(_session())
     scraper = UFCSherdogScraper()
-    try:
-        print(f"Importing fighter: {fighter_url}")
-        fighter = scraper.get_fighter_stats(fighter_url)
-        fighter_importer = FightersImporter(db)
-        fighter_importer.upsert(fighter)
+    with session_scope() as db:
+        try:
+            print(f"Importing fighter: {fighter_url}")
+            fighter = scraper.get_fighter_stats(fighter_url)
+            fighter_importer = FightersImporter(db)
+            fighter_importer.upsert(fighter)
 
-        db.commit()
-        return {"fighter_url": fighter_url}
-    except Exception as exc:
-        print(f"Failed to import fighter: {fighter_url}")
-        raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))
+            return {"fighter_url": fighter_url}
+        except Exception as exc:
+            print(f"Failed to import fighter: {fighter_url}")
+            raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))
 
-@celery_app.task(bind=True, name="upsert_fight", max_retries=3)
+@celery_app.task(bind=True, name="upsert_fight", max_retries=3, ignore_result=True)
 def upsert_fight(self, fighter_results: list[dict], fight: dict):
     """
     After the fighters have been imported, upsert the fight itself.
     fighter_results is a list of the return values from import_fighter tasks (in order).
     """
-    db = next(_session())
-    try:
-        print(f"Upserting fight: {fight.get('fighter_1_url')} vs {fight.get('fighter_2_url')}")
-        fight_importer = FightsImporter(db)
-        fight_importer.upsert(FightSchema(**fight))
+    with session_scope() as db:
+        try:
+            print(f"Upserting fight: {fight.get('fighter_1_url')} vs {fight.get('fighter_2_url')}")
+            fight_importer = FightsImporter(db)
+            fight_importer.upsert(FightSchema(**fight))
 
-        db.commit()
-        return {"fight_url": fight.get("url")}
-    except Exception as exc:
-        print(f"Failed to upsert fight: {fight.get('fighter_1_url')} vs {fight.get('fighter_2_url')}")
-        raise self.retry(exc=exc, countdown=min(30 * 2 ** self.request.retries, 600))
+            return {"fight_url": fight.get("url")}
+        except Exception as exc:
+            print(f"Failed to upsert fight: {fight.get('fighter_1_url')} vs {fight.get('fighter_2_url')}")
+            raise self.retry(exc=exc, countdown=min(30 * 2 ** self.request.retries, 600))
 
-@celery_app.task(bind=True, name="import_fight", max_retries=3)
+@celery_app.task(bind=True, name="import_fight", max_retries=3, ignore_result=True)
 def import_fight(self, fight: dict):
     """
     Spawn two import_fighter tasks in parallel using a chord.
@@ -132,20 +153,19 @@ def import_fight(self, fight: dict):
         print(f"Failed to schedule import_fighter tasks for fight {fight.get('url')}")
         raise self.retry(exc=exc, countdown=min(30 * 2 ** self.request.retries, 600))
 
-@celery_app.task(bind=True, name="import_rankings", max_retries=3)
-def import_rankings(self):
+@celery_app.task(bind=True, name="import_rankings", max_retries=3, ignore_result=True)
+def import_rankings(self, _previous_results=None):
     """
     Fetch and apply UFC rankings.
     """
-    db = next(_session())
     scraper = UFCRankingScraper()
-    try:
-        print("Importing rankings")
-        rankings = scraper.get_ufc_rankings()
-        rankings_importer = RankingsImporter(db)
-        rankings_importer.apply_rankings(rankings)
-        db.commit()
-        return {"status": "ok"}
-    except Exception as exc:
-        print("Failed to import rankings")
-        raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))
+    with session_scope() as db:
+        try:
+            print("Importing rankings")
+            rankings = scraper.get_ufc_rankings()
+            rankings_importer = RankingsImporter(db)
+            rankings_importer.apply_rankings(rankings)
+            return {"status": "ok"}
+        except Exception as exc:
+            print("Failed to import rankings")
+            raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))

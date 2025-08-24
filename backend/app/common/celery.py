@@ -14,5 +14,9 @@ celery_app.conf.task_acks_late = True
 celery_app.conf.worker_prefetch_multiplier = 1
 celery_app.conf.task_default_queue = "default"
 celery_app.conf.task_routes = {
-    "tasks.imports.*": {"queue": "default"},
+    "import_fighter": {"queue": "scrape"},
+    "upsert_fight": {"queue": "db"},
+    "import_event": {"queue": "db"},
+    "sync_ufc_data": {"queue": "db"},
+    "import_rankings": {"queue": "db"},
 }

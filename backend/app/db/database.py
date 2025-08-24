@@ -8,7 +8,13 @@ import os
 # Default to the docker-compose service host when DATABASE_URL is not provided
 URL_DATABASE =  "postgresql://postgres:postgres@postgres:5432/predictmma" 
 
-engine = create_engine(URL_DATABASE)
+engine = create_engine(
+    URL_DATABASE,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
 
 sessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

@@ -40,11 +40,28 @@ services:
       timeout: 3s
       retries: 20
 
-  celery:
+  celery-scrape:
     build: .
     image: predictmma-image
-    container_name: celery-container
-    command: celery -A app.common.celery:celery_app worker --loglevel=info
+    command: celery -A app.common.celery:celery_app worker -Q scrape -P gevent -c 200 --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  celery-db:
+    build: .
+    image: predictmma-image
+    command: celery -A app.common.celery:celery_app worker -Q db -P prefork -c 4 --loglevel=info
     volumes:
       - .:/app
     environment:
