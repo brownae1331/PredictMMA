@@ -6,11 +6,11 @@ from app.api.auth_routes import router as auth_routes
 from app.api.predict_routes import router as predict_routes
 from app.api.event_routes import router as event_routes
 from app.api.fight_routes import router as fight_routes
-from app.services.orchestrator.ufc_coordinator import UFCScraperCoordinator
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 import time
 import os
+from app.tasks.tasks import sync_ufc_data
 
 app = FastAPI()
 
@@ -43,10 +43,11 @@ app.include_router(fight_routes, prefix="/fights", tags=["Fights"])
 @app.get("/")
 def read_root(db: Session = Depends(get_db)):
     """Root endpoint: trigger a full UFC data scrape and seeding operation (async via Celery)."""
-    ufc_coordinator = UFCScraperCoordinator()
     try:
         print("Starting UFC sync...")
-        ufc_coordinator.schedule_sync_ufc_data()
+
+        sync_ufc_data.apply_async()
+
         return {"message": "UFC sync scheduled."}
     except Exception as exc:
         # Avoid crashing the request handler on transient scraper/celery errors
