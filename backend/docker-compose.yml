@@ -43,7 +43,7 @@ services:
   celery-scrape:
     build: .
     image: predictmma-image
-    command: celery -A app.common.celery:celery_app worker -Q scrape -P gevent -c 200 --loglevel=info
+    command: celery -A app.common.celery:celery_app worker -Q scrape -P gevent -c 128 --loglevel=info
     volumes:
       - .:/app
     environment:
@@ -73,6 +73,23 @@ services:
         condition: service_started
       postgres:
         condition: service_started
+      redis:
+        condition: service_healthy
+
+  flower:
+    build: .
+    image: predictmma-image
+    container_name: flower-container
+    command: celery -A app.common.celery:celery_app flower --address=0.0.0.0 --port=5555
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    restart: unless-stopped
+    depends_on:
       redis:
         condition: service_healthy
 
