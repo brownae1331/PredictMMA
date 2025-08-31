@@ -53,53 +53,64 @@ def sync_ufc_data(self):
 
     return {"status": "scheduled", "num_events": len(jobs), "job_id": chord_result.id}
 
-@celery_app.task(bind=True, name="import_event", ignore_result=True)
+@celery_app.task(bind=True, name="import_event")
 def import_event(self, event: dict, is_upcoming: bool):
     """
     Upsert the event.
-    Scrape the event's fights.
-    Schedule each fight import in parallel.
+    Delegate scraping of the event's fights to the scrape queue.
     """
-    scraper = UFCSherdogScraper()
     with session_scope() as db:
         try:
             print(f"Importing event: {event.get('title')}")
             event_importer = EventsImporter(db)
             event_importer.upsert(EventSchema(**event))
             db.commit()
+            scrape_event_fights.s(event, is_upcoming).set(queue="scrape").delay()
 
-            if is_upcoming:
-                fights = scraper.get_upcoming_event_fights(event["url"])
-            else:
-                fights = scraper.get_previous_event_fights(event["url"])
-
-            if not fights:
-                print(f"No fights found for event: {event['title']}")
-                return {"event_url": event["url"], "num_fights": 0}
-
-            # Build a unique set of fighter URLs across all fights for this event
-            unique_fighter_urls: set[str] = set()
-            for f in fights:
-                if f.fighter_1_url:
-                    unique_fighter_urls.add(f.fighter_1_url)
-                if f.fighter_2_url:
-                    unique_fighter_urls.add(f.fighter_2_url)
-
-            header = group(
-                import_fighter.s(url).set(queue="scrape") for url in unique_fighter_urls
-            )
-            body = group(
-                upsert_fight.s(f.model_dump(mode="json")).set(queue="db") for f in fights
-            )
-            chord(header)(body)
-            print(
-                f"Scheduled {len(unique_fighter_urls)} fighter imports and {len(fights)} fight upserts for event: {event['title']}"
-            )
-
-            return {"event_url": event["url"], "num_fighters": len(unique_fighter_urls), "num_fights": len(fights)}
+            return {"event_url": event["url"], "dispatched_scrape": True}
         except Exception as exc:
             print(f"Error importing event: {event['title']}")
             raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))
+
+@celery_app.task(bind=True, name="scrape_event_fights", max_retries=3, ignore_result=True)
+def scrape_event_fights(self, event: dict, is_upcoming: bool):
+    """
+    Scrape fights for an event (I/O-bound) and schedule fighter imports (scrape)
+    and fight upserts (db) using a chord.
+    """
+    scraper = UFCSherdogScraper()
+    try:
+        if is_upcoming:
+            fights = scraper.get_upcoming_event_fights(event["url"])
+        else:
+            fights = scraper.get_previous_event_fights(event["url"])
+
+        if not fights:
+            print(f"No fights found for event: {event.get('title')}")
+            return {"event_url": event["url"], "num_fights": 0}
+
+        unique_fighter_urls: set[str] = set()
+        for f in fights:
+            if f.fighter_1_url:
+                unique_fighter_urls.add(f.fighter_1_url)
+            if f.fighter_2_url:
+                unique_fighter_urls.add(f.fighter_2_url)
+
+        header = group(
+            import_fighter.s(url).set(queue="scrape") for url in unique_fighter_urls
+        )
+        body = group(
+            upsert_fight.s(f.model_dump(mode="json")).set(queue="db") for f in fights
+        )
+        chord(header)(body)
+        print(
+            f"Scheduled {len(unique_fighter_urls)} fighter imports and {len(fights)} fight upserts for event: {event.get('title')}"
+        )
+
+        return {"event_url": event["url"], "num_fighters": len(unique_fighter_urls), "num_fights": len(fights)}
+    except Exception as exc:
+        print(f"Failed to scrape fights for event: {event.get('title')}")
+        raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))
 
 @celery_app.task(bind=True, name="import_fighter", max_retries=3)
 def import_fighter(self, fighter_url: str):
