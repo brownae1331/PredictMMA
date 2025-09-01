@@ -16,7 +16,6 @@ app = FastAPI()
 
 add_cors(app)
 
-# Wait for the database to be ready before creating tables
 def init_db_with_retry() -> None:
     retries = int(os.getenv("DB_INIT_RETRIES", "20"))
     delay_seconds = int(os.getenv("DB_INIT_DELAY_SECONDS", "2"))
@@ -29,7 +28,6 @@ def init_db_with_retry() -> None:
             last_error = exc
             print(f"Database not ready (attempt {attempt}/{retries}). Retrying in {delay_seconds}s...")
             time.sleep(delay_seconds)
-    # If we exhausted retries, re-raise the last error
     if last_error is not None:
         raise last_error
 
