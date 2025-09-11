@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 import time
 import os
-from app.tasks.tasks import sync_ufc_data
+from app.tasks.tasks import sync_all_ufc_events, sync_recent_ufc_events
 
 app = FastAPI()
 
@@ -44,7 +44,7 @@ def read_root(db: Session = Depends(get_db)):
     try:
         print("Starting UFC sync...")
 
-        sync_ufc_data.apply_async()
+        sync_recent_ufc_events.apply_async()
 
         return {"message": "UFC sync scheduled."}
     except Exception as exc:
