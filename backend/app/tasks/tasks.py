@@ -9,6 +9,7 @@ from app.services.scrapers.ufc_ranking_scraper import UFCRankingScraper
 from app.services.scrapers.ufc_sherdog_scraper import UFCSherdogScraper
 from celery import group, chord
 from contextlib import contextmanager
+from datetime import datetime, timezone, timedelta
 
 
 @contextmanager
@@ -23,10 +24,10 @@ def session_scope():
     finally:
         db.close()
 
-@celery_app.task(bind=True, name="sync_ufc_data")
-def sync_ufc_data(self):
+@celery_app.task(bind=True, name="sync_all_ufc_events")
+def sync_all_ufc_events(self):
     """
-    Fetches upcoming and previous UFC events.
+    Fetches and imports all UFC events (both upcoming and previous).
     Schedules import tasks for each event.
     """
     scraper = UFCSherdogScraper()
@@ -47,10 +48,47 @@ def sync_ufc_data(self):
         print("No events found to import")
         return {"status": "no_events"}
 
-    callback = import_rankings.s()
-    chord_result = chord(group(jobs))(callback)
-    print(f"Scheduled {len(jobs)} event import tasks with rankings callback")
 
+    # Schedule rankings immediately - it will intelligently wait for fighter imports to complete
+    import_rankings.apply_async()
+    chord_result = group(jobs).apply_async()
+    print(f"Scheduled {len(jobs)} event import tasks with smart rankings import")
+
+    return {"status": "scheduled", "num_events": len(jobs), "job_id": chord_result.id}
+
+@celery_app.task(bind=True, name="sync_recent_ufc_events")
+def sync_recent_ufc_events(self):
+    """
+    Syncs upcoming events and previous events from the past 30 days only.
+    """
+    scraper = UFCSherdogScraper()
+        
+    previous_events: list[EventSchema] = scraper.get_previous_ufc_events()
+    upcoming_events: list[EventSchema] = scraper.get_upcoming_ufc_events()
+    
+    recent_previous_events = [
+        event for event in previous_events 
+        if event.date.replace(tzinfo=timezone.utc) >= datetime.now(timezone.utc)-timedelta(days=30)
+    ]
+    
+    seen_upcoming_urls: set[str] = {e.url for e in upcoming_events}
+    recent_previous_events = [e for e in recent_previous_events if e.url not in seen_upcoming_urls]
+
+    jobs = []
+    for event in upcoming_events:
+        jobs.append(import_event.s(event.model_dump(mode="json"), is_upcoming=True).set(queue="db"))
+    for event in recent_previous_events:
+        jobs.append(import_event.s(event.model_dump(mode="json"), is_upcoming=False).set(queue="db"))
+    
+    if not jobs:
+        print("No recent events found to import")
+        return {"status": "no_events"}
+
+    # Schedule rankings immediately - it will intelligently wait for fighter imports to complete
+    import_rankings.apply_async()
+    chord_result = group(jobs).apply_async()
+    print(f"Scheduled {len(jobs)} recent event import tasks with smart rankings import")
+    
     return {"status": "scheduled", "num_events": len(jobs), "job_id": chord_result.id}
 
 @celery_app.task(bind=True, name="import_event")
@@ -164,19 +202,29 @@ def import_fight(self, fight: dict):
         print(f"Failed to schedule import_fighter tasks for fight {fight.get('url')}")
         raise self.retry(exc=exc, countdown=min(30 * 2 ** self.request.retries, 600))
 
-@celery_app.task(bind=True, name="import_rankings", max_retries=3, ignore_result=True)
-def import_rankings(self, _previous_results=None):
+@celery_app.task(bind=True, name="import_rankings", max_retries=10, ignore_result=True)
+def import_rankings(self, _previous_results=None, expected_min_fighters=50):
     """
-    Fetch and apply UFC rankings.
+    Fetch and apply UFC rankings, with smart waiting for fighter imports to complete.
     """
     scraper = UFCRankingScraper()
     with session_scope() as db:
         try:
-            print("Importing rankings")
+            # Check if enough fighters have been imported recently
+            from sqlalchemy import text
+            result = db.execute(text(
+                "SELECT COUNT(*) FROM fighters WHERE last_updated_at > NOW() - INTERVAL '10 minutes'"
+            )).scalar()
+            
+            if result < expected_min_fighters and self.request.retries < 8:
+                print(f"⏳ Only {result} fighters imported recently, waiting for more... (retry {self.request.retries + 1})")
+                raise self.retry(countdown=30)  # Retry in 30 seconds
+            
+            print(f"🏆 Starting rankings import with {result} recently imported fighters")
             rankings = scraper.get_ufc_rankings()
             rankings_importer = RankingsImporter(db)
             rankings_importer.apply_rankings(rankings)
-            return {"status": "ok"}
+            return {"status": "ok", "fighters_found": result}
         except Exception as exc:
-            print("Failed to import rankings")
+            print("❌ Failed to import rankings")
             raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))

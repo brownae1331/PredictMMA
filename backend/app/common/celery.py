@@ -17,6 +17,7 @@ celery_app.conf.task_routes = {
     "scrape_event_fights": {"queue": "scrape"},
     "upsert_fight": {"queue": "db"},
     "import_event": {"queue": "db"},
-    "sync_ufc_data": {"queue": "db"},
     "import_rankings": {"queue": "db"},
+    "sync_all_ufc_events": {"queue": "db"},
+    "sync_recent_ufc_events": {"queue": "db"},
 }
