@@ -10,6 +10,7 @@ import {
     ActivityIndicator,
     Alert 
 } from 'react-native';
+import { router } from 'expo-router';
 import { getAllFighters } from '../../lib/api/fighter_api';
 import { Fighter } from '../../types/fighter_types';
 
@@ -50,8 +51,21 @@ export default function FightersScreen() {
         );
     }, [fighters, searchQuery]);
 
+    const handleFighterPress = (fighter_id: number) => {
+        router.push({
+            pathname: '/fighter-detail',
+            params: {
+                fighter_id: fighter_id
+            }
+        });
+    };
+
     const renderFighter = ({ item }: { item: Fighter }) => (
-        <TouchableOpacity style={styles.fighterCard}>
+        <TouchableOpacity 
+            style={styles.fighterCard} 
+            onPress={() => handleFighterPress(item.id)}
+            activeOpacity={0.7}
+        >
             <View style={styles.fighterImageContainer}>
                 {item.image_url ? (
                     <Image 
