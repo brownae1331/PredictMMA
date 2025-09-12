@@ -45,14 +45,10 @@ def sync_all_ufc_events(self):
         jobs.append(import_event.s(event.model_dump(mode="json"), is_upcoming=False).set(queue="db"))
 
     if not jobs:
-        print("No events found to import")
         return {"status": "no_events"}
 
-
-    # Schedule rankings immediately - it will intelligently wait for fighter imports to complete
-    import_rankings.apply_async()
-    chord_result = group(jobs).apply_async()
-    print(f"Scheduled {len(jobs)} event import tasks with smart rankings import")
+    chord_result = chord(jobs)(import_rankings.s().set(queue="db", countdown=60))
+    print(f"Scheduled {len(jobs)} event import tasks with delayed chord rankings import")
 
     return {"status": "scheduled", "num_events": len(jobs), "job_id": chord_result.id}
 
@@ -84,10 +80,8 @@ def sync_recent_ufc_events(self):
         print("No recent events found to import")
         return {"status": "no_events"}
 
-    # Schedule rankings immediately - it will intelligently wait for fighter imports to complete
-    import_rankings.apply_async()
-    chord_result = group(jobs).apply_async()
-    print(f"Scheduled {len(jobs)} recent event import tasks with smart rankings import")
+    chord_result = chord(jobs)(import_rankings.s().set(queue="db", countdown=60))
+    print(f"Scheduled {len(jobs)} recent event import tasks with delayed chord rankings import")
     
     return {"status": "scheduled", "num_events": len(jobs), "job_id": chord_result.id}
 
@@ -203,28 +197,20 @@ def import_fight(self, fight: dict):
         raise self.retry(exc=exc, countdown=min(30 * 2 ** self.request.retries, 600))
 
 @celery_app.task(bind=True, name="import_rankings", max_retries=10, ignore_result=True)
-def import_rankings(self, _previous_results=None, expected_min_fighters=50):
+def import_rankings(self, *args, **kwargs):
     """
-    Fetch and apply UFC rankings, with smart waiting for fighter imports to complete.
+    Fetch and apply UFC rankings.
+    When used as a chord callback, receives results from all header tasks but ignores them.
     """
     scraper = UFCRankingScraper()
     with session_scope() as db:
         try:
-            # Check if enough fighters have been imported recently
-            from sqlalchemy import text
-            result = db.execute(text(
-                "SELECT COUNT(*) FROM fighters WHERE last_updated_at > NOW() - INTERVAL '10 minutes'"
-            )).scalar()
-            
-            if result < expected_min_fighters and self.request.retries < 8:
-                print(f"⏳ Only {result} fighters imported recently, waiting for more... (retry {self.request.retries + 1})")
-                raise self.retry(countdown=30)  # Retry in 30 seconds
-            
-            print(f"🏆 Starting rankings import with {result} recently imported fighters")
+            print(f"🏆 Starting rankings import")
             rankings = scraper.get_ufc_rankings()
             rankings_importer = RankingsImporter(db)
             rankings_importer.apply_rankings(rankings)
-            return {"status": "ok", "fighters_found": result}
+            print(f"✅ Rankings import task completed successfully")
+            return {"status": "ok"}
         except Exception as exc:
-            print("❌ Failed to import rankings")
+            print(f"❌ Failed to import rankings: {exc}")
             raise self.retry(exc=exc, countdown=min(60 * 2 ** self.request.retries, 3600))
