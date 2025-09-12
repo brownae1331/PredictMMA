@@ -6,6 +6,7 @@ from app.api.auth_routes import router as auth_routes
 from app.api.predict_routes import router as predict_routes
 from app.api.event_routes import router as event_routes
 from app.api.fight_routes import router as fight_routes
+from app.api.fighter_routes import router as fighter_routes
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 import time
@@ -37,6 +38,7 @@ app.include_router(auth_routes, prefix="/auth", tags=["Auth"])
 app.include_router(predict_routes, prefix="/predict", tags=["Predict"])
 app.include_router(event_routes, prefix="/events", tags=["Events"])
 app.include_router(fight_routes, prefix="/fights", tags=["Fights"])
+app.include_router(fighter_routes, prefix="/fighters", tags=["Fighters"])
 
 @app.get("/")
 def read_root(db: Session = Depends(get_db)):
