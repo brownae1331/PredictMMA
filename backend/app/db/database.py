@@ -5,7 +5,6 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 import os
 
-# Default to the docker-compose service host when DATABASE_URL is not provided
 URL_DATABASE =  "postgresql://postgres:postgres@postgres:5432/predictmma" 
 
 engine = create_engine(
