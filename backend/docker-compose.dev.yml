@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    image: predictmma-image
+    container_name: predictmma-container
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/__pycache__/
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - postgres
+      - redis

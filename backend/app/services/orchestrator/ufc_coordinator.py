@@ -1,4 +1,3 @@
-from datetime import datetime
 from sqlalchemy.orm import Session
 from app.services.scrapers.ufc_sherdog_scraper import UFCSherdogScraper
 from app.services.scrapers.ufc_ranking_scraper import UFCRankingScraper
@@ -7,16 +6,17 @@ from app.services.importers.fights import FightsImporter
 from app.services.importers.fighters import FightersImporter
 from app.services.importers.rankings import RankingsImporter
 from app.schemas.sherdog_schemas import Event as EventSchema, Fight as FightSchema, Fighter as FighterSchema
-from app.db.models.models import Event as EventModel, Fight as FightModel, Fighter as FighterModel
+
 
 class UFCScraperCoordinator:
     """
     Class for coordinating the scraping and importing of UFC data.
     """
+
     def __init__(self):
         self.sherdog_scraper = UFCSherdogScraper()
         self.ufc_ranking_scraper = UFCRankingScraper()
-    
+
     def sync_ufc_data(self, db: Session) -> None:
         """
         Syncs the UFC data from the scrapers and imports it into the database.

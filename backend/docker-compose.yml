@@ -1,0 +1,99 @@
+services:
+  app:
+    build: .
+    image: predictmma-image
+    container_name: predictmma-container
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres
+    container_name: postgres-container
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=predictmma
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: redis-container
+    command: ["sh", "-c", "rm -f /data/* && exec redis-server --save '' --appendonly no --maxmemory-policy allkeys-lru --tcp-keepalive 60 --timeout 300"]
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  celery-scrape:
+    build: .
+    image: predictmma-image
+    command: celery -A app.common.celery:celery_app worker -Q scrape -P gevent -c 100 --loglevel=info --without-gossip --without-mingle
+    volumes:
+      - .:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  celery-db:
+    build: .
+    image: predictmma-image
+    command: celery -A app.common.celery:celery_app worker -Q db -P prefork -c 8 --loglevel=info --without-gossip --without-mingle
+    volumes:
+      - .:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  flower:
+    build: .
+    image: predictmma-image
+    container_name: flower-container
+    command: celery -A app.common.celery:celery_app flower --address=0.0.0.0 --port=5555
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - FLOWER_UNAUTHENTICATED_API=true
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
