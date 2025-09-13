@@ -4,13 +4,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { Method } from '@/src/types/predict_types';
+
+type TabType = 'predictions' | 'analytics';
 
 export default function PredictScreen() {
     const [predictions, setPredictions] = useState<PredictionOutPredict[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedTab, setSelectedTab] = useState<TabType>('predictions');
 
     useFocusEffect(
         useCallback(() => {
@@ -40,6 +43,70 @@ export default function PredictScreen() {
         }
     };
 
+    const renderAnalytics = () => {
+        if (loading) {
+            return <ActivityIndicator size="large" color="#000" style={styles.loader} />;
+        }
+        
+        if (error) {
+            return <Text style={styles.errorText}>Error: {error}</Text>;
+        }
+        
+        if (predictions.length === 0) {
+            return <Text style={styles.welcomeSubtitle}>No predictions data available for analytics.</Text>;
+        }
+
+        const totalPredictions = predictions.length;
+        const winCount = predictions.filter(p => p.result === 'win').length;
+        const lossCount = predictions.filter(p => p.result === 'loss').length;
+        const pendingCount = predictions.filter(p => p.result === 'pending').length;
+        const accuracy = totalPredictions > 0 && (winCount + lossCount) > 0 ? 
+            ((winCount / (winCount + lossCount)) * 100).toFixed(1) : '0.0';
+
+        const methodStats = predictions.reduce((acc, pred) => {
+            acc[pred.method] = (acc[pred.method] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        return (
+            <View style={styles.analyticsContainer}>
+                <View style={styles.statsCard}>
+                    <Text style={styles.cardTitle}>Overall Statistics</Text>
+                    <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Total Predictions:</Text>
+                        <Text style={styles.statValue}>{totalPredictions}</Text>
+                    </View>
+                    <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Accuracy:</Text>
+                        <Text style={styles.statValue}>{accuracy}%</Text>
+                    </View>
+                    <View style={styles.statRow}>
+                        <Text style={[styles.statLabel, styles.resultWin]}>Wins:</Text>
+                        <Text style={[styles.statValue, styles.resultWin]}>{winCount}</Text>
+                    </View>
+                    <View style={styles.statRow}>
+                        <Text style={[styles.statLabel, styles.resultLoss]}>Losses:</Text>
+                        <Text style={[styles.statValue, styles.resultLoss]}>{lossCount}</Text>
+                    </View>
+                    <View style={styles.statRow}>
+                        <Text style={[styles.statLabel, styles.resultPending]}>Pending:</Text>
+                        <Text style={[styles.statValue, styles.resultPending]}>{pendingCount}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.statsCard}>
+                    <Text style={styles.cardTitle}>Method Breakdown</Text>
+                    {Object.entries(methodStats).map(([method, count]) => (
+                        <View key={method} style={styles.statRow}>
+                            <Text style={styles.statLabel}>{method}:</Text>
+                            <Text style={styles.statValue}>{count}</Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
             {/* Header Banner */}
@@ -49,54 +116,78 @@ export default function PredictScreen() {
                 </View>
             </View>
 
+            {/* Tab Selector */}
+            <View style={styles.tabContainer}>
+                <TouchableOpacity 
+                    style={[styles.tab, selectedTab === 'predictions' && styles.activeTab]}
+                    onPress={() => setSelectedTab('predictions')}
+                >
+                    <Text style={[styles.tabText, selectedTab === 'predictions' && styles.activeTabText]}>
+                        Predictions
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[styles.tab, selectedTab === 'analytics' && styles.activeTab]}
+                    onPress={() => setSelectedTab('analytics')}
+                >
+                    <Text style={[styles.tabText, selectedTab === 'analytics' && styles.activeTabText]}>
+                        Analytics
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
             {/* Main Content */}
             <ScrollView style={styles.scrollView}>
                 <View style={styles.mainContent}>
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#000" style={styles.loader} />
-                    ) : error ? (
-                        <Text style={styles.errorText}>Error: {error}</Text>
-                    ) : predictions.length === 0 ? (
-                        <Text style={styles.welcomeSubtitle}>No predictions yet.</Text>
-                    ) : (
-                        <View style={styles.tableContainer}>
-                            {/* Table Header */}
-                            <View style={styles.tableHeader}>
-                                <Text style={[styles.headerCell, styles.fightColumn]}>Fight</Text>
-                                <Text style={[styles.headerCell, styles.eventColumn]}>Event</Text>
-                                <Text style={[styles.headerCell, styles.predictionColumn]}>Prediction</Text>
-                                <Text style={[styles.headerCell, styles.methodColumn]}>Method</Text>
-                                <Text style={[styles.headerCell, styles.resultColumn]}>Status</Text>
-                            </View>
-
-                            {/* Table Body */}
-                            {predictions.map((prediction, idx) => (
-                                <View key={idx} style={[styles.tableRow, idx % 2 === 0 && styles.evenRow]}>
-                                    <Text style={[styles.tableCell, styles.fightColumn]} numberOfLines={2}>
-                                        {`${prediction.fighter_1_name} vs ${prediction.fighter_2_name}`}
-                                    </Text>
-                                    <Text style={[styles.tableCell, styles.eventColumn]} numberOfLines={2}>
-                                        {prediction.event_title.split(' - ')[0]}
-                                    </Text>
-                                    <Text style={[styles.tableCell, styles.predictionColumn]} numberOfLines={2}>
-                                        {prediction.winner_name}
-                                    </Text>
-                                    <Text style={[styles.tableCell, styles.methodColumn]} numberOfLines={2}>
-                                        {prediction.method}{prediction.round ? ` R${prediction.round}` : ''}
-                                    </Text>
-                                    <Text style={[
-                                        styles.tableCell,
-                                        styles.resultColumn,
-                                        styles.resultText,
-                                        prediction.result === 'win' && styles.resultWin,
-                                        prediction.result === 'loss' && styles.resultLoss,
-                                        prediction.result === 'pending' && styles.resultPending
-                                    ]}>
-                                        {prediction.result === 'win' ? 'W' : prediction.result === 'loss' ? 'L' : 'P'}
-                                    </Text>
+                    {selectedTab === 'predictions' ? (
+                        loading ? (
+                            <ActivityIndicator size="large" color="#000" style={styles.loader} />
+                        ) : error ? (
+                            <Text style={styles.errorText}>Error: {error}</Text>
+                        ) : predictions.length === 0 ? (
+                            <Text style={styles.welcomeSubtitle}>No predictions yet.</Text>
+                        ) : (
+                            <View style={styles.tableContainer}>
+                                {/* Table Header */}
+                                <View style={styles.tableHeader}>
+                                    <Text style={[styles.headerCell, styles.fightColumn]}>Fight</Text>
+                                    <Text style={[styles.headerCell, styles.eventColumn]}>Event</Text>
+                                    <Text style={[styles.headerCell, styles.predictionColumn]}>Prediction</Text>
+                                    <Text style={[styles.headerCell, styles.methodColumn]}>Method</Text>
+                                    <Text style={[styles.headerCell, styles.resultColumn]}>Status</Text>
                                 </View>
-                            ))}
-                        </View>
+
+                                {/* Table Body */}
+                                {predictions.map((prediction, idx) => (
+                                    <View key={idx} style={[styles.tableRow, idx % 2 === 0 && styles.evenRow]}>
+                                        <Text style={[styles.tableCell, styles.fightColumn]} numberOfLines={2}>
+                                            {`${prediction.fighter_1_name} vs ${prediction.fighter_2_name}`}
+                                        </Text>
+                                        <Text style={[styles.tableCell, styles.eventColumn]} numberOfLines={2}>
+                                            {prediction.event_title.split(' - ')[0]}
+                                        </Text>
+                                        <Text style={[styles.tableCell, styles.predictionColumn]} numberOfLines={2}>
+                                            {prediction.winner_name}
+                                        </Text>
+                                        <Text style={[styles.tableCell, styles.methodColumn]} numberOfLines={2}>
+                                            {prediction.method}{prediction.round ? ` R${prediction.round}` : ''}
+                                        </Text>
+                                        <Text style={[
+                                            styles.tableCell,
+                                            styles.resultColumn,
+                                            styles.resultText,
+                                            prediction.result === 'win' && styles.resultWin,
+                                            prediction.result === 'loss' && styles.resultLoss,
+                                            prediction.result === 'pending' && styles.resultPending
+                                        ]}>
+                                            {prediction.result === 'win' ? 'W' : prediction.result === 'loss' ? 'L' : 'P'}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )
+                    ) : (
+                        renderAnalytics()
                     )}
                 </View>
             </ScrollView>
@@ -227,5 +318,78 @@ const styles = StyleSheet.create({
     },
     resultPending: {
         color: '#ffc107',
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#f8f9fa',
+        marginHorizontal: 4,
+        marginVertical: 8,
+        borderRadius: 8,
+        padding: 4,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 6,
+        alignItems: 'center',
+    },
+    activeTab: {
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#6c757d',
+    },
+    activeTabText: {
+        color: '#000',
+        fontWeight: '600',
+    },
+    analyticsContainer: {
+        alignSelf: 'stretch',
+        paddingHorizontal: 4,
+    },
+    statsCard: {
+        backgroundColor: '#fff',
+        marginVertical: 8,
+        marginHorizontal: 4,
+        borderRadius: 12,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    cardTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#222',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    statRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f3f4',
+    },
+    statLabel: {
+        fontSize: 16,
+        color: '#495057',
+        fontWeight: '500',
+    },
+    statValue: {
+        fontSize: 16,
+        color: '#212529',
+        fontWeight: '600',
     },
 });
