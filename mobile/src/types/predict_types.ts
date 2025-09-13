@@ -22,7 +22,9 @@ export interface PredictionOutPredict {
     event_title: string;
     fighter_1_name: string;
     fighter_2_name: string;
+    winner_name: string;
     winner_image: string;
     method: Method;
     round: number | null;
+    result: string; // "pending", "win", "loss"
 }

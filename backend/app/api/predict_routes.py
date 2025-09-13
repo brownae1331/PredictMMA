@@ -173,13 +173,28 @@ async def get_all_predictions(user_id: int, db: db_dependency) -> list[Predictio
         if not db_winner:
             raise HTTPException(status_code=404, detail="Winner not found")
         
+        # Calculate prediction result
+        result = "pending"
+        if db_fight.winner:  # Fight has finished
+            # Check if prediction was correct
+            prediction_correct = False
+            if db_winner.name == db_fight.winner:
+                # Check method and round if specified
+                if prediction.method.upper() == db_fight.method.upper():
+                    if prediction.round is None or prediction.round == db_fight.round:
+                        prediction_correct = True
+            
+            result = "win" if prediction_correct else "loss"
+        
         predictions.append(PredictionOutPredict(
             event_title=db_event.title,
             fighter_1_name=db_fighter_1.name,
             fighter_2_name=db_fighter_2.name,
+            winner_name=db_winner.name,
             winner_image=db_winner.image_url,
             method=prediction.method,
             round=prediction.round,
+            result=result,
         ))
 
     return predictions

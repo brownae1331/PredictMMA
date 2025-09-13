@@ -5,7 +5,6 @@ import { jwtDecode } from 'jwt-decode';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
-import { Image } from 'expo-image';
 import { Method } from '@/src/types/predict_types';
 
 export default function PredictScreen() {
@@ -60,47 +59,44 @@ export default function PredictScreen() {
                     ) : predictions.length === 0 ? (
                         <Text style={styles.welcomeSubtitle}>No predictions yet.</Text>
                     ) : (
-                        Object.entries(groupPredictionsByEvent(predictions)).map(([eventTitle, eventPredictions]) => (
-                            <View key={eventTitle} style={styles.eventContainer}>
-                                <Text style={styles.eventTitle}>{eventTitle}</Text>
-
-                                {eventPredictions.map((prediction, idx) => (
-                                    <View key={idx} style={styles.predictionContainer}>
-                                        {/* Fight Text */}
-                                        <Text style={styles.fightText}>{`${prediction.fighter_1_name} vs ${prediction.fighter_2_name}`}</Text>
-
-                                        {/* Images Row */}
-                                        <View style={styles.imagesRow}>
-                                            {/* Winner Image */}
-                                            <Image
-                                                source={{ uri: prediction.winner_image }}
-                                                style={styles.fighterImage}
-                                                contentFit="cover"
-                                                contentPosition="top"
-                                            />
-
-                                            {/* Method Image */}
-                                            <Image
-                                                source={methodImageMap[prediction.method]}
-                                                style={styles.methodImage}
-                                                contentFit="cover"
-                                                contentPosition="center"
-                                            />
-
-                                            {/* Round Image (may be null for decision) */}
-                                            {prediction.round !== null && (
-                                                <Image
-                                                    source={roundImageMap[prediction.round]}
-                                                    style={styles.roundImage}
-                                                    contentFit="cover"
-                                                    contentPosition="center"
-                                                />
-                                            )}
-                                        </View>
-                                    </View>
-                                ))}
+                        <View style={styles.tableContainer}>
+                            {/* Table Header */}
+                            <View style={styles.tableHeader}>
+                                <Text style={[styles.headerCell, styles.fightColumn]}>Fight</Text>
+                                <Text style={[styles.headerCell, styles.eventColumn]}>Event</Text>
+                                <Text style={[styles.headerCell, styles.predictionColumn]}>Prediction</Text>
+                                <Text style={[styles.headerCell, styles.methodColumn]}>Method</Text>
+                                <Text style={[styles.headerCell, styles.resultColumn]}>Status</Text>
                             </View>
-                        ))
+
+                            {/* Table Body */}
+                            {predictions.map((prediction, idx) => (
+                                <View key={idx} style={[styles.tableRow, idx % 2 === 0 && styles.evenRow]}>
+                                    <Text style={[styles.tableCell, styles.fightColumn]} numberOfLines={2}>
+                                        {`${prediction.fighter_1_name} vs ${prediction.fighter_2_name}`}
+                                    </Text>
+                                    <Text style={[styles.tableCell, styles.eventColumn]} numberOfLines={2}>
+                                        {prediction.event_title.split(' - ')[0]}
+                                    </Text>
+                                    <Text style={[styles.tableCell, styles.predictionColumn]} numberOfLines={2}>
+                                        {prediction.winner_name}
+                                    </Text>
+                                    <Text style={[styles.tableCell, styles.methodColumn]} numberOfLines={2}>
+                                        {prediction.method}{prediction.round ? ` R${prediction.round}` : ''}
+                                    </Text>
+                                    <Text style={[
+                                        styles.tableCell,
+                                        styles.resultColumn,
+                                        styles.resultText,
+                                        prediction.result === 'win' && styles.resultWin,
+                                        prediction.result === 'loss' && styles.resultLoss,
+                                        prediction.result === 'pending' && styles.resultPending
+                                    ]}>
+                                        {prediction.result === 'win' ? 'W' : prediction.result === 'loss' ? 'L' : 'P'}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
                     )}
                 </View>
             </ScrollView>
@@ -108,29 +104,7 @@ export default function PredictScreen() {
     );
 }
 
-const methodImageMap: Record<Method, any> = {
-    [Method.KO]: require('../../../assets/images/punch.png'),
-    [Method.SUBMISSION]: require('../../../assets/images/choke.png'),
-    [Method.DECISION]: require('../../../assets/images/law.png'),
-};
 
-const roundImageMap: Record<number, any> = {
-    1: require('../../../assets/images/one.png'),
-    2: require('../../../assets/images/two.png'),
-    3: require('../../../assets/images/three.png'),
-    4: require('../../../assets/images/four.png'),
-    5: require('../../../assets/images/five.png'),
-};
-
-function groupPredictionsByEvent(predictions: PredictionOutPredict[]): Record<string, PredictionOutPredict[]> {
-    return predictions.reduce((acc, pred) => {
-        if (!acc[pred.event_title]) {
-            acc[pred.event_title] = [];
-        }
-        acc[pred.event_title].push(pred);
-        return acc;
-    }, {} as Record<string, PredictionOutPredict[]>);
-}
 
 const styles = StyleSheet.create({
     container: {
@@ -156,7 +130,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: 4,
     },
     welcomeTitle: {
         fontSize: 24,
@@ -179,67 +153,79 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 20,
     },
-    eventContainer: {
+    tableContainer: {
         alignSelf: 'stretch',
         backgroundColor: '#fff',
         marginVertical: 8,
-        marginHorizontal: 16,
-        borderRadius: 12,
-        padding: 16,
+        marginHorizontal: 4,
+        borderRadius: 8,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 4,
         elevation: 2,
+        overflow: 'hidden',
     },
-    eventTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 12,
-        color: '#222',
-        textAlign: 'center',
-    },
-    predictionContainer: {
-        marginBottom: 16,
-        alignItems: 'center',
-    },
-    fightText: {
-        fontSize: 15,
-        fontWeight: '500',
-        marginBottom: 8,
-        color: '#444',
-        textAlign: 'center',
-    },
-    imagesRow: {
+    tableHeader: {
         flexDirection: 'row',
-        justifyContent: 'center',
+        backgroundColor: '#f8f9fa',
+        paddingVertical: 10,
+        paddingHorizontal: 6,
+        borderBottomWidth: 2,
+        borderBottomColor: '#dee2e6',
+    },
+    headerCell: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#495057',
+        textAlign: 'center',
+        paddingHorizontal: 2,
+    },
+    tableRow: {
+        flexDirection: 'row',
+        paddingVertical: 8,
+        paddingHorizontal: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e9ecef',
+        minHeight: 45,
         alignItems: 'center',
     },
-    fighterImage: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        marginHorizontal: 8,
-        backgroundColor: '#fafafa',
-        borderWidth: 2,
-        borderColor: '#e0e0e0',
+    evenRow: {
+        backgroundColor: '#f8f9fa',
     },
-    methodImage: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        marginHorizontal: 8,
-        backgroundColor: '#fafafa',
-        borderWidth: 2,
-        borderColor: '#e0e0e0',
+    tableCell: {
+        fontSize: 12,
+        color: '#212529',
+        textAlign: 'center',
+        paddingHorizontal: 1,
+        flexWrap: 'wrap',
     },
-    roundImage: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        marginHorizontal: 8,
-        backgroundColor: '#fafafa',
-        borderWidth: 2,
-        borderColor: '#e0e0e0',
+    fightColumn: {
+        flex: 3.5,
+    },
+    eventColumn: {
+        flex: 3,
+    },
+    predictionColumn: {
+        flex: 2.5,
+    },
+    methodColumn: {
+        flex: 1.8,
+    },
+    resultColumn: {
+        flex: 1.5,
+    },
+    resultText: {
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+    resultWin: {
+        color: '#28a745',
+    },
+    resultLoss: {
+        color: '#dc3545',
+    },
+    resultPending: {
+        color: '#ffc107',
     },
 });

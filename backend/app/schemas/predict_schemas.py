@@ -22,6 +22,8 @@ class PredictionOutPredict(BaseModel):
     event_title: str
     fighter_1_name: str
     fighter_2_name: str
+    winner_name: str
     winner_image: str
     method: Method
     round: int | None
+    result: str  # "pending", "win", "loss"
