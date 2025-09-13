@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Method } from '@/src/types/predict_types';
 
 type TabType = 'predictions' | 'analytics';
@@ -14,6 +14,7 @@ export default function PredictScreen() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedTab, setSelectedTab] = useState<TabType>('predictions');
+    const [searchQuery, setSearchQuery] = useState('');
 
     useFocusEffect(
         useCallback(() => {
@@ -43,6 +44,19 @@ export default function PredictScreen() {
         }
     };
 
+    const filteredPredictions = predictions.filter(prediction => {
+        if (!searchQuery.trim()) return true;
+        
+        const query = searchQuery.toLowerCase();
+        return (
+            prediction.fighter_1_name.toLowerCase().includes(query) ||
+            prediction.fighter_2_name.toLowerCase().includes(query) ||
+            prediction.event_title.toLowerCase().includes(query) ||
+            prediction.winner_name.toLowerCase().includes(query) ||
+            prediction.method.toLowerCase().includes(query)
+        );
+    });
+
     const renderAnalytics = () => {
         if (loading) {
             return <ActivityIndicator size="large" color="#000" style={styles.loader} />;
@@ -52,18 +66,20 @@ export default function PredictScreen() {
             return <Text style={styles.errorText}>Error: {error}</Text>;
         }
         
-        if (predictions.length === 0) {
-            return <Text style={styles.welcomeSubtitle}>No predictions data available for analytics.</Text>;
+        if (filteredPredictions.length === 0) {
+            return <Text style={styles.welcomeSubtitle}>
+                {searchQuery ? 'No predictions match your search.' : 'No predictions data available for analytics.'}
+            </Text>;
         }
 
-        const totalPredictions = predictions.length;
-        const winCount = predictions.filter(p => p.result === 'win').length;
-        const lossCount = predictions.filter(p => p.result === 'loss').length;
-        const pendingCount = predictions.filter(p => p.result === 'pending').length;
+        const totalPredictions = filteredPredictions.length;
+        const winCount = filteredPredictions.filter(p => p.result === 'win').length;
+        const lossCount = filteredPredictions.filter(p => p.result === 'loss').length;
+        const pendingCount = filteredPredictions.filter(p => p.result === 'pending').length;
         const accuracy = totalPredictions > 0 && (winCount + lossCount) > 0 ? 
             ((winCount / (winCount + lossCount)) * 100).toFixed(1) : '0.0';
 
-        const methodStats = predictions.reduce((acc, pred) => {
+        const methodStats = filteredPredictions.reduce((acc, pred) => {
             acc[pred.method] = (acc[pred.method] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
@@ -136,6 +152,17 @@ export default function PredictScreen() {
                 </TouchableOpacity>
             </View>
 
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search predictions..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholderTextColor="#9ca3af"
+                />
+            </View>
+
             {/* Main Content */}
             <ScrollView style={styles.scrollView}>
                 <View style={styles.mainContent}>
@@ -144,8 +171,10 @@ export default function PredictScreen() {
                             <ActivityIndicator size="large" color="#000" style={styles.loader} />
                         ) : error ? (
                             <Text style={styles.errorText}>Error: {error}</Text>
-                        ) : predictions.length === 0 ? (
-                            <Text style={styles.welcomeSubtitle}>No predictions yet.</Text>
+                        ) : filteredPredictions.length === 0 ? (
+                            <Text style={styles.welcomeSubtitle}>
+                                {searchQuery ? 'No predictions match your search.' : 'No predictions yet.'}
+                            </Text>
                         ) : (
                             <View style={styles.tableContainer}>
                                 {/* Table Header */}
@@ -158,7 +187,7 @@ export default function PredictScreen() {
                                 </View>
 
                                 {/* Table Body */}
-                                {predictions.map((prediction, idx) => (
+                                {filteredPredictions.map((prediction, idx) => (
                                     <View key={idx} style={[styles.tableRow, idx % 2 === 0 && styles.evenRow]}>
                                         <Text style={[styles.tableCell, styles.fightColumn]} numberOfLines={2}>
                                             {`${prediction.fighter_1_name} vs ${prediction.fighter_2_name}`}
@@ -391,5 +420,23 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#212529',
         fontWeight: '600',
+    },
+    searchContainer: {
+        marginHorizontal: 8,
+        marginVertical: 8,
+    },
+    searchInput: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
 });
