@@ -98,7 +98,7 @@ export default function PredictScreen() {
                     <Text style={styles.cardTitle}>Method Breakdown</Text>
                     {Object.entries(methodStats).map(([method, count]) => (
                         <View key={method} style={styles.statRow}>
-                            <Text style={styles.statLabel}>{method}:</Text>
+                            <Text style={styles.statLabel}>{method === 'SUBMISSION' ? 'SUB' : method === 'DECISION' ? 'DEC' : method}:</Text>
                             <Text style={styles.statValue}>{count}</Text>
                         </View>
                     ))}
@@ -170,7 +170,7 @@ export default function PredictScreen() {
                                             {prediction.winner_name}
                                         </Text>
                                         <Text style={[styles.tableCell, styles.methodColumn]} numberOfLines={2}>
-                                            {prediction.method}{prediction.round ? ` R${prediction.round}` : ''}
+                                            {prediction.method === 'SUBMISSION' ? 'SUB' : prediction.method === 'DECISION' ? 'DEC' : prediction.method}{prediction.round ? ` R${prediction.round}` : ''}
                                         </Text>
                                         <Text style={[
                                             styles.tableCell,
