@@ -152,16 +152,18 @@ export default function PredictScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search predictions..."
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholderTextColor="#9ca3af"
-                />
-            </View>
+            {/* Search Bar - Only show on Predictions tab */}
+            {selectedTab === 'predictions' && (
+                <View style={styles.searchContainer}>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search predictions..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        placeholderTextColor="#9ca3af"
+                    />
+                </View>
+            )}
 
             {/* Main Content */}
             <ScrollView style={styles.scrollView}>
