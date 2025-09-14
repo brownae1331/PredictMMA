@@ -102,6 +102,15 @@ export default function FighterDetailScreen() {
         }
     };
 
+    const handleOpponentPress = (opponent_id: number) => {
+        router.push({
+            pathname: '/fighter-detail',
+            params: {
+                fighter_id: opponent_id,
+            },
+        });
+    };
+
     const renderFightHistoryItem = (fight: FighterFightHistory, index: number) => (
         <View key={fight.id} style={styles.fightHistoryItem}>
             <View style={styles.fightHeader}>
@@ -134,7 +143,9 @@ export default function FighterDetailScreen() {
                         </View>
                     )}
                     <View style={styles.opponentDetails}>
-                        <Text style={styles.opponentName}>{fight.opponent_name}</Text>
+                        <TouchableOpacity onPress={() => handleOpponentPress(fight.opponent_id)} activeOpacity={0.7}>
+                            <Text style={styles.opponentName}>{fight.opponent_name}</Text>
+                        </TouchableOpacity>
                         {fight.opponent_country && (
                             <Text style={styles.opponentCountry}>{fight.opponent_country}</Text>
                         )}
