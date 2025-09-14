@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, Query
 from app.db.database import db_dependency
 from app.db.models import models
 from app.schemas.fighter_schemas import Fighter, FighterSearchResponse
+from app.schemas.fight_schemas import FighterFightHistory
+from app.core.utils.string_utils import get_flag_image_url
 router = APIRouter()
 
 @router.get("/")
@@ -83,3 +85,63 @@ def get_fighter_by_id(fighter_id: int, db: db_dependency) -> Fighter:
         weight_class=fighter.weight_class,
         association=fighter.association
     )
+
+@router.get("/{fighter_id}/fights")
+def get_fighter_fight_history(fighter_id: int, db: db_dependency) -> list[FighterFightHistory]:
+    """Get all fights for a specific fighter"""
+    fighter = db.query(models.Fighter).filter(models.Fighter.id == fighter_id).first()
+    if not fighter:
+        raise HTTPException(status_code=404, detail="Fighter not found")
+    
+    db_fights = (
+        db.query(models.Fight, models.Event)
+        .join(models.Event, models.Fight.event_id == models.Event.id)
+        .filter(
+            (models.Fight.fighter_1_id == fighter_id) | 
+            (models.Fight.fighter_2_id == fighter_id)
+        )
+        .order_by(models.Event.date.desc())
+        .all()
+    )
+    
+    fight_history = []
+    
+    for fight, event in db_fights:
+        opponent_id = fight.fighter_2_id if fight.fighter_1_id == fighter_id else fight.fighter_1_id
+        opponent = db.query(models.Fighter).filter(models.Fighter.id == opponent_id).first()
+        
+        if not opponent:
+            continue
+            
+        result = "N/A"
+        if fight.winner:
+            if fight.winner.lower() == "draw":
+                result = "Draw"
+            elif fight.winner.lower() == "no contest":
+                result = "No Contest"
+            elif fight.winner == "fighter_1":
+                if fight.fighter_1_id == fighter_id:
+                    result = "Win"
+                else:
+                    result = "Loss"
+            else:
+                result = "N/A"
+        
+        fight_history.append(FighterFightHistory(
+            id=fight.id,
+            event_title=event.title,
+            event_date=event.date.isoformat() if event.date else None,
+            event_location=event.location,
+            opponent_id=opponent.id,
+            opponent_name=opponent.name,
+            opponent_image=opponent.image_url,
+            opponent_country=opponent.country,
+            opponent_flag=get_flag_image_url(opponent.country),
+            weight_class=fight.weight_class,
+            result=result,
+            method=fight.method,
+            round=fight.round,
+            time=fight.time
+        ))
+    
+    return fight_history

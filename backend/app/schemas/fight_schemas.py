@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from enum import Enum
 
-class ResultType(str, Enum):
+class FightResultType(str, Enum):
     WIN = "WIN"
     DRAW = "DRAW"
     NO_CONTEST = "NO_CONTEST"
@@ -25,8 +25,24 @@ class Fight(BaseModel):
     time: str
 
 class FightResult(BaseModel):
-    result_type: ResultType
+    result_type: FightResultType
     winner_id: int | None
     method: str
     round: int
     time: str
+
+class FighterFightHistory(BaseModel):
+    id: int
+    event_title: str
+    event_date: str | None
+    event_location: str | None
+    opponent_id: int
+    opponent_name: str
+    opponent_image: str | None
+    opponent_country: str | None
+    opponent_flag: str | None
+    weight_class: str | None
+    result: str  # "Win", "Loss", "Draw", "No Contest", "N/A"
+    method: str | None
+    round: int | None
+    time: str | None

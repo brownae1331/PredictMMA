@@ -30,3 +30,20 @@ export interface FightResult {
     round: number;
     time: string;
 }
+
+export interface FighterFightHistory {
+    id: number;
+    event_title: string;
+    event_date: string | null;
+    event_location: string | null;
+    opponent_id: number;
+    opponent_name: string;
+    opponent_image: string | null;
+    opponent_country: string | null;
+    opponent_flag: string | null;
+    weight_class: string | null;
+    result: string; // "Win", "Loss", "Draw", "No Contest", "N/A"
+    method: string | null;
+    round: number | null;
+    time: string | null;
+}
