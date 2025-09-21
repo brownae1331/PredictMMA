@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
-from app.schemas.predict_schemas import PredictionCreate, PredictionOutMakePrediction, PredictionOutPredict
+from app.schemas.predict_schemas import PredictionCreate, PredictionOutMakePrediction, PredictionOutPredict, PredictionResult
 from app.db.database import db_dependency
 from app.db.models import models
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime, timezone
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 router = APIRouter()
@@ -172,19 +172,54 @@ async def get_all_predictions(user_id: int, db: db_dependency) -> list[Predictio
         
         if not db_winner:
             raise HTTPException(status_code=404, detail="Winner not found")
+
+        db_fight_result = (
+            db.query(models.Fight)
+            .filter(models.Fight.id == prediction.fight_id)
+            .first()
+        )
+
+        if not db_fight_result:
+            raise HTTPException(status_code=404, detail="Fight result not found")
+
+        if not db_fight_result.winner:
+            result = None
+        elif db_fight_result.winner.lower() in ["draw", "no contest"]:
+            result = PredictionResult(fighter=False, method=False, round=False)
+        else:
+            winner_id = db_fight_result.fighter_1_id
+            predicted_fighter_id = db_winner.id
+
+            if winner_id != predicted_fighter_id:
+                result = PredictionResult(fighter=False, method=False, round=False)
+            else:
+                fighter_correct = True
+
+                method_correct = False
+                if db_fight_result.method and prediction.method:
+
+                    normalized_actual = None
+                    if "decision" in db_fight_result.method.lower():
+                        normalized_actual = "DECISION"
+                    elif "submission" in db_fight_result.method.lower() or db_fight_result.method.lower().startswith("sub"):
+                        normalized_actual = "SUBMISSION"
+                    elif any(term in db_fight_result.method.lower() for term in ["ko", "tko", "knockout", "technical knockout"]):
+                        normalized_actual = "KO"
+
+                    method_correct = normalized_actual == prediction.method
+
+                round_correct = False
+                if normalized_actual == "DECISION":
+                    round_correct = True
+                elif db_fight_result.round and prediction.round:
+                    round_correct = db_fight_result.round == prediction.round
+
+                result = PredictionResult(
+                    fighter=fighter_correct,
+                    method=method_correct,
+                    round=round_correct
+                )
         
-        # Calculate prediction result
-        result = "pending"
-        if db_fight.winner:  # Fight has finished
-            # Check if prediction was correct
-            prediction_correct = False
-            if db_winner.name == db_fight.winner:
-                # Check method and round if specified
-                if prediction.method.upper() == db_fight.method.upper():
-                    if prediction.round is None or prediction.round == db_fight.round:
-                        prediction_correct = True
-            
-            result = "win" if prediction_correct else "loss"
         
         predictions.append(PredictionOutPredict(
             event_title=db_event.title,

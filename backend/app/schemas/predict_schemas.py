@@ -18,6 +18,11 @@ class PredictionOutMakePrediction(BaseModel):
     method: Method
     round: int | None
 
+class PredictionResult(BaseModel):
+    fighter: bool
+    method: bool
+    round: bool
+
 class PredictionOutPredict(BaseModel):
     event_title: str
     fighter_1_name: str
@@ -26,4 +31,4 @@ class PredictionOutPredict(BaseModel):
     winner_image: str
     method: Method
     round: int | None
-    result: str  # "pending", "win", "loss"
+    result: PredictionResult | None

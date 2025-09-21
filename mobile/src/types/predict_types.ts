@@ -18,6 +18,12 @@ export interface PredictionOutMakePrediction {
     round: number | null;
 }
 
+export interface PredictionResult {
+    fighter: boolean;
+    method: boolean;
+    round: boolean;
+}
+
 export interface PredictionOutPredict {
     event_title: string;
     fighter_1_name: string;
@@ -26,5 +32,5 @@ export interface PredictionOutPredict {
     winner_image: string;
     method: Method;
     round: number | null;
-    result: string; // "pending", "win", "loss"
+    result: PredictionResult | null;
 }

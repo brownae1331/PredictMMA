@@ -5,7 +5,6 @@ import { jwtDecode } from 'jwt-decode';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Method } from '@/src/types/predict_types';
 
 type TabType = 'predictions' | 'analytics';
 
@@ -73,11 +72,6 @@ export default function PredictScreen() {
         }
 
         const totalPredictions = filteredPredictions.length;
-        const winCount = filteredPredictions.filter(p => p.result === 'win').length;
-        const lossCount = filteredPredictions.filter(p => p.result === 'loss').length;
-        const pendingCount = filteredPredictions.filter(p => p.result === 'pending').length;
-        const accuracy = totalPredictions > 0 && (winCount + lossCount) > 0 ? 
-            ((winCount / (winCount + lossCount)) * 100).toFixed(1) : '0.0';
 
         const methodStats = filteredPredictions.reduce((acc, pred) => {
             acc[pred.method] = (acc[pred.method] || 0) + 1;
@@ -91,22 +85,6 @@ export default function PredictScreen() {
                     <View style={styles.statRow}>
                         <Text style={styles.statLabel}>Total Predictions:</Text>
                         <Text style={styles.statValue}>{totalPredictions}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                        <Text style={styles.statLabel}>Accuracy:</Text>
-                        <Text style={styles.statValue}>{accuracy}%</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                        <Text style={[styles.statLabel, styles.resultWin]}>Wins:</Text>
-                        <Text style={[styles.statValue, styles.resultWin]}>{winCount}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                        <Text style={[styles.statLabel, styles.resultLoss]}>Losses:</Text>
-                        <Text style={[styles.statValue, styles.resultLoss]}>{lossCount}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                        <Text style={[styles.statLabel, styles.resultPending]}>Pending:</Text>
-                        <Text style={[styles.statValue, styles.resultPending]}>{pendingCount}</Text>
                     </View>
                 </View>
 
@@ -185,7 +163,7 @@ export default function PredictScreen() {
                                     <Text style={[styles.headerCell, styles.eventColumn]}>Event</Text>
                                     <Text style={[styles.headerCell, styles.predictionColumn]}>Prediction</Text>
                                     <Text style={[styles.headerCell, styles.methodColumn]}>Method</Text>
-                                    <Text style={[styles.headerCell, styles.resultColumn]}>Status</Text>
+                                    <Text style={[styles.headerCell, styles.roundColumn]}>Round</Text>
                                 </View>
 
                                 {/* Table Body */}
@@ -197,22 +175,36 @@ export default function PredictScreen() {
                                         <Text style={[styles.tableCell, styles.eventColumn]} numberOfLines={2}>
                                             {prediction.event_title.split(' - ')[0]}
                                         </Text>
-                                        <Text style={[styles.tableCell, styles.predictionColumn]} numberOfLines={2}>
-                                            {prediction.winner_name}
-                                        </Text>
-                                        <Text style={[styles.tableCell, styles.methodColumn]} numberOfLines={2}>
-                                            {prediction.method === 'SUBMISSION' ? 'SUB' : prediction.method === 'DECISION' ? 'DEC' : prediction.method}{prediction.round ? ` R${prediction.round}` : ''}
-                                        </Text>
-                                        <Text style={[
-                                            styles.tableCell,
-                                            styles.resultColumn,
-                                            styles.resultText,
-                                            prediction.result === 'win' && styles.resultWin,
-                                            prediction.result === 'loss' && styles.resultLoss,
-                                            prediction.result === 'pending' && styles.resultPending
-                                        ]}>
-                                            {prediction.result === 'win' ? 'W' : prediction.result === 'loss' ? 'L' : 'P'}
-                                        </Text>
+                                        <View style={[styles.tableCell, styles.predictionColumn]}>
+                                            <Text style={styles.cellText} numberOfLines={2}>
+                                                {prediction.winner_name}
+                                            </Text>
+                                            {prediction.result && (
+                                                <Text style={[styles.indicator, prediction.result.fighter ? styles.correct : styles.incorrect]}>
+                                                    {prediction.result.fighter ? '✓' : '✗'}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <View style={[styles.tableCell, styles.methodColumn]}>
+                                            <Text style={styles.cellText} numberOfLines={2}>
+                                                {prediction.method === 'SUBMISSION' ? 'SUB' : prediction.method === 'DECISION' ? 'DEC' : prediction.method}
+                                            </Text>
+                                            {prediction.result && (
+                                                <Text style={[styles.indicator, prediction.result.method ? styles.correct : styles.incorrect]}>
+                                                    {prediction.result.method ? '✓' : '✗'}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <View style={[styles.tableCell, styles.roundColumn]}>
+                                            <Text style={styles.cellText} numberOfLines={1}>
+                                                {prediction.round ? `R${prediction.round}` : '-'}
+                                            </Text>
+                                            {prediction.result && (
+                                                <Text style={[styles.indicator, prediction.result.round ? styles.correct : styles.incorrect]}>
+                                                    {prediction.result.round ? '✓' : '✗'}
+                                                </Text>
+                                            )}
+                                        </View>
                                     </View>
                                 ))}
                             </View>
@@ -321,6 +313,24 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingHorizontal: 1,
         flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cellText: {
+        fontSize: 12,
+        color: '#212529',
+        textAlign: 'center',
+    },
+    indicator: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        marginTop: 2,
+    },
+    correct: {
+        color: '#22c55e',
+    },
+    incorrect: {
+        color: '#ef4444',
     },
     fightColumn: {
         flex: 3.5,
@@ -334,21 +344,8 @@ const styles = StyleSheet.create({
     methodColumn: {
         flex: 1.8,
     },
-    resultColumn: {
+    roundColumn: {
         flex: 1.5,
-    },
-    resultText: {
-        fontWeight: 'bold',
-        fontSize: 12,
-    },
-    resultWin: {
-        color: '#28a745',
-    },
-    resultLoss: {
-        color: '#dc3545',
-    },
-    resultPending: {
-        color: '#ffc107',
     },
     tabContainer: {
         flexDirection: 'row',
