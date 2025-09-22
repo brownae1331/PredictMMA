@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from enum import Enum
+from datetime import datetime
 
 class Method(str, Enum):
     KO = "KO"
@@ -25,10 +26,10 @@ class PredictionResult(BaseModel):
 
 class PredictionOutPredict(BaseModel):
     event_title: str
+    event_date: datetime
     fighter_1_name: str
     fighter_2_name: str
     winner_name: str
-    winner_image: str
     method: Method
     round: int | None
     result: PredictionResult | None

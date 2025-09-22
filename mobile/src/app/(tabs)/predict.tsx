@@ -2,12 +2,14 @@ import { getAllPredictions } from '@/src/lib/api/predict_api';
 import { PredictionOutPredict } from '@/src/types/predict_types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { formatFighterName } from '@/src/lib/utils/uiUtils';
 
 type TabType = 'predictions' | 'analytics';
+type FilterType = 'all' | 'correct' | 'wrong' | 'pending';
+type SortType = 'date-desc' | 'date-asc';
 
 export default function PredictScreen() {
     const [predictions, setPredictions] = useState<PredictionOutPredict[]>([]);
@@ -15,6 +17,10 @@ export default function PredictScreen() {
     const [error, setError] = useState<string | null>(null);
     const [selectedTab, setSelectedTab] = useState<TabType>('predictions');
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterType, setFilterType] = useState<FilterType>('all');
+    const [sortType, setSortType] = useState<SortType>('date-desc');
+    const [showFilterOptions, setShowFilterOptions] = useState(false);
+    const [showSortOptions, setShowSortOptions] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -44,18 +50,49 @@ export default function PredictScreen() {
         }
     };
 
-    const filteredPredictions = predictions.filter(prediction => {
-        if (!searchQuery.trim()) return true;
+    const filteredPredictions = useMemo(() => {
+        let filtered = [...predictions];
         
-        const query = searchQuery.toLowerCase();
-        return (
-            prediction.fighter_1_name.toLowerCase().includes(query) ||
-            prediction.fighter_2_name.toLowerCase().includes(query) ||
-            prediction.event_title.toLowerCase().includes(query) ||
-            prediction.winner_name.toLowerCase().includes(query) ||
-            prediction.method.toLowerCase().includes(query)
-        );
-    });
+        // Apply filter by prediction status
+        if (filterType !== 'all') {
+            filtered = filtered.filter(prediction => {
+                if (filterType === 'pending') {
+                    return !prediction.result;
+                } else if (filterType === 'correct') {
+                    return prediction.result && prediction.result.fighter;
+                } else if (filterType === 'wrong') {
+                    return prediction.result && !prediction.result.fighter;
+                }
+                return true;
+            });
+        }
+        
+        // Apply search filter
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(prediction => 
+                prediction.fighter_1_name.toLowerCase().includes(query) ||
+                prediction.fighter_2_name.toLowerCase().includes(query) ||
+                prediction.event_title.toLowerCase().includes(query) ||
+                prediction.winner_name.toLowerCase().includes(query) ||
+                prediction.method.toLowerCase().includes(query)
+            );
+        }
+        
+        // Apply sorting by event date
+        filtered.sort((a, b) => {
+            const dateA = new Date(a.event_date);
+            const dateB = new Date(b.event_date);
+            
+            if (sortType === 'date-desc') {
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            } else {
+                return dateA.getTime() - dateB.getTime(); // Oldest first
+            }
+        });
+        
+        return filtered;
+    }, [predictions, filterType, searchQuery, sortType]);
 
     const renderAnalytics = () => {
         if (loading) {
@@ -131,17 +168,136 @@ export default function PredictScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Search Bar - Only show on Predictions tab */}
+            {/* Filter and Sort Bar - Only show on Predictions tab */}
             {selectedTab === 'predictions' && (
-                <View style={styles.searchContainer}>
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search predictions..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        placeholderTextColor="#9ca3af"
-                    />
-                </View>
+                <>
+                    <View style={styles.filterSortContainer}>
+                        {/* Filter Dropdown */}
+                        <View style={styles.dropdownContainer}>
+                            <TouchableOpacity 
+                                style={[styles.dropdownButton, showFilterOptions && styles.dropdownButtonActive]}
+                                onPress={() => {
+                                    setShowFilterOptions(!showFilterOptions);
+                                    setShowSortOptions(false);
+                                }}
+                            >
+                                <Text style={styles.dropdownButtonText}>
+                                    {filterType === 'all' ? 'All Predictions' : 
+                                     filterType === 'correct' ? 'Correct Predictions' : 
+                                     filterType === 'wrong' ? 'Wrong Predictions' : 'Pending Predictions'}
+                                </Text>
+                                <Text style={[styles.dropdownArrow, showFilterOptions && styles.dropdownArrowUp]}>
+                                    ▼
+                                </Text>
+                            </TouchableOpacity>
+                            
+                            {showFilterOptions && (
+                                <View style={styles.dropdownMenu}>
+                                    <TouchableOpacity 
+                                        style={[styles.dropdownItem, filterType === 'all' && styles.selectedDropdownItem]}
+                                        onPress={() => {
+                                            setFilterType('all');
+                                            setShowFilterOptions(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.dropdownItemText, filterType === 'all' && styles.selectedDropdownItemText]}>
+                                            All Predictions
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={[styles.dropdownItem, filterType === 'correct' && styles.selectedDropdownItem]}
+                                        onPress={() => {
+                                            setFilterType('correct');
+                                            setShowFilterOptions(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.dropdownItemText, filterType === 'correct' && styles.selectedDropdownItemText]}>
+                                            Correct Predictions ✓
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={[styles.dropdownItem, filterType === 'wrong' && styles.selectedDropdownItem]}
+                                        onPress={() => {
+                                            setFilterType('wrong');
+                                            setShowFilterOptions(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.dropdownItemText, filterType === 'wrong' && styles.selectedDropdownItemText]}>
+                                            Wrong Predictions ✗
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={[styles.dropdownItem, filterType === 'pending' && styles.selectedDropdownItem]}
+                                        onPress={() => {
+                                            setFilterType('pending');
+                                            setShowFilterOptions(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.dropdownItemText, filterType === 'pending' && styles.selectedDropdownItemText]}>
+                                            Pending Predictions
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                        
+                        {/* Sort Dropdown */}
+                        <View style={styles.dropdownContainer}>
+                            <TouchableOpacity 
+                                style={[styles.dropdownButton, showSortOptions && styles.dropdownButtonActive]}
+                                onPress={() => {
+                                    setShowSortOptions(!showSortOptions);
+                                    setShowFilterOptions(false);
+                                }}
+                            >
+                                <Text style={styles.dropdownButtonText}>
+                                    {sortType === 'date-desc' ? 'Newest First' : 'Oldest First'}
+                                </Text>
+                                <Text style={[styles.dropdownArrow, showSortOptions && styles.dropdownArrowUp]}>
+                                    ▼
+                                </Text>
+                            </TouchableOpacity>
+                            
+                            {showSortOptions && (
+                                <View style={styles.dropdownMenu}>
+                                    <TouchableOpacity 
+                                        style={[styles.dropdownItem, sortType === 'date-desc' && styles.selectedDropdownItem]}
+                                        onPress={() => {
+                                            setSortType('date-desc');
+                                            setShowSortOptions(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.dropdownItemText, sortType === 'date-desc' && styles.selectedDropdownItemText]}>
+                                            Newest First ↓
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={[styles.dropdownItem, sortType === 'date-asc' && styles.selectedDropdownItem]}
+                                        onPress={() => {
+                                            setSortType('date-asc');
+                                            setShowSortOptions(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.dropdownItemText, sortType === 'date-asc' && styles.selectedDropdownItemText]}>
+                                            Oldest First ↑
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                    
+                    {/* Search Bar */}
+                    <View style={styles.searchContainer}>
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search predictions..."
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            placeholderTextColor="#9ca3af"
+                        />
+                    </View>
+                </>
             )}
 
             {/* Main Content */}
@@ -504,5 +660,89 @@ const styles = StyleSheet.create({
     predictionNameContainer: {
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    filterSortContainer: {
+        flexDirection: 'row',
+        marginHorizontal: 8,
+        marginTop: 8,
+        marginBottom: 4,
+        gap: 8,
+    },
+    dropdownContainer: {
+        flex: 1,
+        position: 'relative',
+        zIndex: 1000,
+    },
+    dropdownButton: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    dropdownButtonActive: {
+        borderColor: '#007bff',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    dropdownButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#495057',
+        flex: 1,
+    },
+    dropdownArrow: {
+        fontSize: 12,
+        color: '#6c757d',
+        marginLeft: 8,
+        transform: [{ rotate: '0deg' }],
+    },
+    dropdownArrowUp: {
+        transform: [{ rotate: '180deg' }],
+    },
+    dropdownMenu: {
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 8,
+        marginTop: 4,
+        overflow: 'hidden',
+        zIndex: 1001,
+    },
+    dropdownItem: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f3f4',
+    },
+    selectedDropdownItem: {
+        backgroundColor: '#f8f9fa',
+    },
+    dropdownItemText: {
+        fontSize: 14,
+        color: '#495057',
+    },
+    selectedDropdownItemText: {
+        color: '#007bff',
+        fontWeight: '600',
     },
 });

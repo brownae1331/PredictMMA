@@ -26,10 +26,10 @@ export interface PredictionResult {
 
 export interface PredictionOutPredict {
     event_title: string;
+    event_date: Date;
     fighter_1_name: string;
     fighter_2_name: string;
     winner_name: string;
-    winner_image: string;
     method: Method;
     round: number | null;
     result: PredictionResult | null;

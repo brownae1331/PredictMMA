@@ -46,7 +46,7 @@ def read_root(db: Session = Depends(get_db)):
     try:
         print("Starting UFC sync...")
 
-        sync_all_ufc_events.apply_async()
+        sync_recent_ufc_events.apply_async()
 
         return {"message": "UFC sync scheduled."}
     except Exception as exc:

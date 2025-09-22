@@ -223,10 +223,10 @@ async def get_all_predictions(user_id: int, db: db_dependency) -> list[Predictio
         
         predictions.append(PredictionOutPredict(
             event_title=db_event.title,
+            event_date=db_event.date,
             fighter_1_name=db_fighter_1.name,
             fighter_2_name=db_fighter_2.name,
             winner_name=db_winner.name,
-            winner_image=db_winner.image_url,
             method=prediction.method,
             round=prediction.round,
             result=result,
