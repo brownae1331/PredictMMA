@@ -18,11 +18,19 @@ export interface PredictionOutMakePrediction {
     round: number | null;
 }
 
+export interface PredictionResult {
+    fighter: boolean;
+    method: boolean;
+    round: boolean;
+}
+
 export interface PredictionOutPredict {
     event_title: string;
+    event_date: Date;
     fighter_1_name: string;
     fighter_2_name: string;
-    winner_image: string;
+    winner_name: string;
     method: Method;
     round: number | null;
+    result: PredictionResult | null;
 }

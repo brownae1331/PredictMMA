@@ -135,10 +135,14 @@ export default function MakePredictionScreen() {
                             contentPosition="top"
                         />
                         <View style={styles.fighterNameContainer}>
-                            <Text style={styles.fighterName}>
+                            <Text style={styles.fighterFirstName}>
                                 {fighter1Name.firstName}
-                                {fighter1Name.lastName ? ` ${fighter1Name.lastName}` : ''}
                             </Text>
+                            {fighter1Name.lastName && (
+                                <Text style={styles.fighterLastName}>
+                                    {fighter1Name.lastName}
+                                </Text>
+                            )}
                         </View>
                     </TouchableOpacity>
 
@@ -160,10 +164,14 @@ export default function MakePredictionScreen() {
                             contentPosition="top"
                         />
                         <View style={styles.fighterNameContainer}>
-                            <Text style={styles.fighterName}>
+                            <Text style={styles.fighterFirstName}>
                                 {fighter2Name.firstName}
-                                {fighter2Name.lastName ? ` ${fighter2Name.lastName}` : ''}
                             </Text>
+                            {fighter2Name.lastName && (
+                                <Text style={styles.fighterLastName}>
+                                    {fighter2Name.lastName}
+                                </Text>
+                            )}
                         </View>
                     </TouchableOpacity>
                 </View>
@@ -487,6 +495,18 @@ const styles = StyleSheet.create({
     fighterName: {
         fontSize: 13,
         fontWeight: '400',
+        textAlign: 'center',
+        color: '#222',
+    },
+    fighterFirstName: {
+        fontSize: 13,
+        fontWeight: '500',
+        textAlign: 'center',
+        color: '#222',
+    },
+    fighterLastName: {
+        fontSize: 13,
+        fontWeight: '500',
         textAlign: 'center',
         color: '#222',
     },

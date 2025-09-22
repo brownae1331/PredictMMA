@@ -18,11 +18,9 @@ class UFCSherdogScraper:
 
     def __init__(self):
         self.base_url = "https://www.sherdog.com"
-        # Reuse a single cloudscraper session to persist cookies and mimic a browser more closely
         self.scraper = cloudscraper.create_scraper(
             browser={"browser": "chrome", "platform": "windows", "mobile": False}
         )
-        # Realistic headers help reduce chances of a 403 from Cloudflare
         self.headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
