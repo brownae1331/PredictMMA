@@ -30,3 +30,19 @@ class FightResult(BaseModel):
     method: str
     round: int
     time: str
+
+class FighterFightHistory(BaseModel):
+    id: int
+    event_title: str
+    event_date: str | None
+    event_location: str | None
+    opponent_id: int
+    opponent_name: str
+    opponent_image: str | None
+    opponent_country: str | None
+    opponent_flag: str | None
+    weight_class: str | None
+    result: str  # "Win", "Loss", "Draw", "No Contest", "N/A"
+    method: str | None
+    round: int | None
+    time: str | None

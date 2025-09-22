@@ -10,12 +10,15 @@ import {
     Alert 
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { getFighterById } from '../lib/api/fighter_api';
+import { getFighterById, getFighterFightHistory } from '../lib/api/fighter_api';
 import { Fighter } from '../types/fighter_types';
+import { FighterFightHistory } from '../types/fight_types';
 
 export default function FighterDetailScreen() {
     const [fighter, setFighter] = useState<Fighter | null>(null);
+    const [fightHistory, setFightHistory] = useState<FighterFightHistory[]>([]);
     const [loading, setLoading] = useState(true);
+    const [historyLoading, setHistoryLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const { fighter_id } = useLocalSearchParams();
@@ -30,12 +33,28 @@ export default function FighterDetailScreen() {
             setError(null);
             const fighterData = await getFighterById(Number(fighter_id));
             setFighter(fighterData);
+            
+            // Load fight history
+            await loadFightHistory(Number(fighter_id));
         } catch (error) {
             console.error('Error loading fighter details:', error);
             setError(error instanceof Error ? error.message : 'Failed to load fighter details');
             Alert.alert('Error', 'Failed to load fighter details');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadFightHistory = async (fighterId: number) => {
+        try {
+            setHistoryLoading(true);
+            const historyData = await getFighterFightHistory(fighterId);
+            setFightHistory(historyData);
+        } catch (error) {
+            console.error('Error loading fight history:', error);
+            // Don't show error for fight history, just log it
+        } finally {
+            setHistoryLoading(false);
         }
     };
 
@@ -67,6 +86,86 @@ export default function FighterDetailScreen() {
             return null;
         }
     };
+
+    const getResultColor = (result: string) => {
+        switch (result.toLowerCase()) {
+            case 'win':
+                return '#4CAF50';
+            case 'loss':
+                return '#F44336';
+            case 'draw':
+                return '#FF9800';
+            case 'no contest':
+                return '#9E9E9E';
+            default:
+                return '#666';
+        }
+    };
+
+    const handleOpponentPress = (opponent_id: number) => {
+        router.push({
+            pathname: '/fighter-detail',
+            params: {
+                fighter_id: opponent_id,
+            },
+        });
+    };
+
+    const renderFightHistoryItem = (fight: FighterFightHistory, index: number) => (
+        <View key={fight.id} style={styles.fightHistoryItem}>
+            <View style={styles.fightHeader}>
+                <View style={styles.fightResultContainer}>
+                    <Text style={[styles.fightResult, { color: getResultColor(fight.result) }]}>
+                        {fight.result.toUpperCase()}
+                    </Text>
+                </View>
+                <Text style={styles.fightDate}>{formatDate(fight.event_date || undefined)}</Text>
+            </View>
+            
+            <Text style={styles.eventTitle} numberOfLines={1}>{fight.event_title}</Text>
+            {fight.event_location && (
+                <Text style={styles.eventLocation}>{fight.event_location}</Text>
+            )}
+            
+            <View style={styles.opponentSection}>
+                <View style={styles.opponentInfo}>
+                    {fight.opponent_image ? (
+                        <Image
+                            source={{ uri: fight.opponent_image }}
+                            style={styles.opponentImage}
+                            defaultSource={require('../../assets/images/icon.png')}
+                        />
+                    ) : (
+                        <View style={styles.opponentImagePlaceholder}>
+                            <Text style={styles.opponentImagePlaceholderText}>
+                                {fight.opponent_name.charAt(0).toUpperCase()}
+                            </Text>
+                        </View>
+                    )}
+                    <View style={styles.opponentDetails}>
+                        <TouchableOpacity onPress={() => handleOpponentPress(fight.opponent_id)} activeOpacity={0.7}>
+                            <Text style={styles.opponentName}>{fight.opponent_name}</Text>
+                        </TouchableOpacity>
+                        {fight.opponent_country && (
+                            <Text style={styles.opponentCountry}>{fight.opponent_country}</Text>
+                        )}
+                        {fight.weight_class && (
+                            <Text style={styles.weightClass}>{fight.weight_class}</Text>
+                        )}
+                    </View>
+                </View>
+            </View>
+            
+            {fight.method && (
+                <View style={styles.fightDetails}>
+                    <Text style={styles.fightDetailsText}>
+                        {fight.method}
+                        {fight.round && fight.time && ` - Round ${fight.round} (${fight.time})`}
+                    </Text>
+                </View>
+            )}
+        </View>
+    );
 
     if (loading) {
         return (
@@ -235,6 +334,28 @@ export default function FighterDetailScreen() {
                                     <Text style={styles.quickStatLabel}>Draws</Text>
                                 </View>
                             </View>
+                        </View>
+
+                        {/* Fight History */}
+                        <View style={styles.statsCard}>
+                            <View style={styles.fightHistoryHeader}>
+                                <Text style={styles.cardTitle}>Fight History</Text>
+                                {historyLoading && (
+                                    <ActivityIndicator size="small" color="#007AFF" />
+                                )}
+                            </View>
+                            
+                            {fightHistory.length > 0 ? (
+                                <View style={styles.fightHistoryContainer}>
+                                    {fightHistory.map((fight, index) => renderFightHistoryItem(fight, index))}
+                                </View>
+                            ) : (
+                                <View style={styles.noHistoryContainer}>
+                                    <Text style={styles.noHistoryText}>
+                                        {historyLoading ? 'Loading fight history...' : 'No fight history available'}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
@@ -467,5 +588,123 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: 'rgba(255, 255, 255, 0.8)',
         fontWeight: '500',
+    },
+    fightHistoryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    fightHistoryContainer: {
+        gap: 16,
+    },
+    fightHistoryItem: {
+        backgroundColor: '#f9f9f9',
+        borderRadius: 12,
+        padding: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: '#007AFF',
+    },
+    fightHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    fightResultContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    fightResult: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        overflow: 'hidden',
+    },
+    fightDate: {
+        fontSize: 12,
+        color: '#666',
+        fontWeight: '500',
+    },
+    eventTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 4,
+    },
+    eventLocation: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 12,
+    },
+    opponentSection: {
+        marginBottom: 12,
+    },
+    opponentInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    opponentImage: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#f0f0f0',
+        marginRight: 12,
+    },
+    opponentImagePlaceholder: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#007AFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    opponentImagePlaceholderText: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    opponentDetails: {
+        flex: 1,
+    },
+    opponentName: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 2,
+    },
+    opponentCountry: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 2,
+    },
+    weightClass: {
+        fontSize: 14,
+        color: '#007AFF',
+        fontWeight: '500',
+    },
+    fightDetails: {
+        backgroundColor: 'rgba(0, 122, 255, 0.1)',
+        borderRadius: 8,
+        padding: 8,
+    },
+    fightDetailsText: {
+        fontSize: 14,
+        color: '#007AFF',
+        fontWeight: '500',
+        textAlign: 'center',
+    },
+    noHistoryContainer: {
+        alignItems: 'center',
+        paddingVertical: 20,
+    },
+    noHistoryText: {
+        fontSize: 16,
+        color: '#666',
+        fontStyle: 'italic',
     },
 });

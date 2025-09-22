@@ -56,6 +56,15 @@ export default function EventFightsScreen() {
         });
     };
 
+    const handleFighterPress = (fighter_id: number) => {
+        router.push({
+            pathname: '/fighter-detail',
+            params: {
+                fighter_id,
+            },
+        });
+    };
+
     const renderFightCard = (fight: Fight, index: number) => {
         const fightResult = fightResults[fight.id];
         const isWin = fightResult && fightResult.result_type === ResultType.WIN;
@@ -91,7 +100,11 @@ export default function EventFightsScreen() {
                                 isDrawOrNC && styles.drawImage
                             ]} />
                         )}
-                        <View style={styles.fighterInfoRow}>
+                        <TouchableOpacity 
+                            style={styles.fighterInfoRow} 
+                            onPress={() => handleFighterPress(fight.fighter_1_id)}
+                            activeOpacity={0.7}
+                        >
                             {fight.fighter_1_flag ? (
                                 <Image
                                     source={{ uri: fight.fighter_1_flag }}
@@ -100,12 +113,12 @@ export default function EventFightsScreen() {
                                 />
                             ) : null}
                             <View style={styles.fighterNameContainer}>
-                                <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
+                                <Text style={[styles.fighterFirstName, styles.clickableName]}>{fighter1Name.firstName}</Text>
                                 {fighter1Name.lastName !== '' && (
-                                    <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
+                                    <Text style={[styles.fighterLastName, styles.clickableName]}>{fighter1Name.lastName}</Text>
                                 )}
                             </View>
-                        </View>
+                        </TouchableOpacity>
                         {fight.fighter_1_ranking ? (
                             <Text style={styles.fighterRank}>{`#${fight.fighter_1_ranking}`}</Text>
                         ) : null}
@@ -138,7 +151,11 @@ export default function EventFightsScreen() {
                                 isDrawOrNC && styles.drawImage
                             ]} />
                         )}
-                        <View style={styles.fighterInfoRow}>
+                        <TouchableOpacity 
+                            style={styles.fighterInfoRow} 
+                            onPress={() => handleFighterPress(fight.fighter_2_id)}
+                            activeOpacity={0.7}
+                        >
                             {fight.fighter_2_flag ? (
                                 <Image
                                     source={{ uri: fight.fighter_2_flag }}
@@ -147,12 +164,12 @@ export default function EventFightsScreen() {
                                 />
                             ) : null}
                             <View style={styles.fighterNameContainer}>
-                                <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
+                                <Text style={[styles.fighterFirstName, styles.clickableName]}>{fighter2Name.firstName}</Text>
                                 {fighter2Name.lastName !== '' && (
-                                    <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
+                                    <Text style={[styles.fighterLastName, styles.clickableName]}>{fighter2Name.lastName}</Text>
                                 )}
                             </View>
-                        </View>
+                        </TouchableOpacity>
                         {fight.fighter_2_ranking ? (
                             <Text style={styles.fighterRank}>{`#${fight.fighter_2_ranking}`}</Text>
                         ) : null}
@@ -356,6 +373,9 @@ const styles = StyleSheet.create({
         textAlign: 'left',
         color: '#222',
         marginTop: 1,
+    },
+    clickableName: {
+        color: '#222',
     },
     fighterRank: {
         fontSize: 12,
