@@ -5,6 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { formatFighterName } from '@/src/lib/utils/uiUtils';
 
 type TabType = 'predictions' | 'analytics';
 
@@ -161,24 +162,58 @@ export default function PredictScreen() {
                                 <View style={styles.tableHeader}>
                                     <Text style={[styles.headerCell, styles.fightColumn]}>Fight</Text>
                                     <Text style={[styles.headerCell, styles.eventColumn]}>Event</Text>
-                                    <Text style={[styles.headerCell, styles.predictionColumn]}>Prediction</Text>
+                                    <Text style={[styles.headerCell, styles.predictionColumn]}>Fighter</Text>
                                     <Text style={[styles.headerCell, styles.methodColumn]}>Method</Text>
                                     <Text style={[styles.headerCell, styles.roundColumn]}>Round</Text>
                                 </View>
 
                                 {/* Table Body */}
-                                {filteredPredictions.map((prediction, idx) => (
-                                    <View key={idx} style={[styles.tableRow, idx % 2 === 0 && styles.evenRow]}>
-                                        <Text style={[styles.tableCell, styles.fightColumn]} numberOfLines={2}>
-                                            {`${prediction.fighter_1_name} vs ${prediction.fighter_2_name}`}
-                                        </Text>
-                                        <Text style={[styles.tableCell, styles.eventColumn]} numberOfLines={2}>
-                                            {prediction.event_title.split(' - ')[0]}
-                                        </Text>
+                                {filteredPredictions.map((prediction, idx) => {
+                                    const fighter1Name = formatFighterName(prediction.fighter_1_name);
+                                    const fighter2Name = formatFighterName(prediction.fighter_2_name);
+                                    
+                                    return (
+                                        <View key={idx} style={[styles.tableRow, idx % 2 === 0 && styles.evenRow]}>
+                                            <View style={[styles.tableCell, styles.fightColumn]}>
+                                                <View style={styles.fighterNamesContainer}>
+                                                    <View style={styles.fighterNameWrapper}>
+                                                        <Text style={styles.fighterFirstName}>{fighter1Name.firstName}</Text>
+                                                        {fighter1Name.lastName && (
+                                                            <Text style={styles.fighterLastName}>{fighter1Name.lastName}</Text>
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.vsText}>vs</Text>
+                                                    <View style={styles.fighterNameWrapper}>
+                                                        <Text style={styles.fighterFirstName}>{fighter2Name.firstName}</Text>
+                                                        {fighter2Name.lastName && (
+                                                            <Text style={styles.fighterLastName}>{fighter2Name.lastName}</Text>
+                                                        )}
+                                                    </View>
+                                                </View>
+                                            </View>
+                                            <View style={[styles.tableCell, styles.eventColumn]}>
+                                                <Text style={styles.cellText} numberOfLines={2}>
+                                                    {prediction.event_title.split(' - ')[0]}
+                                                </Text>
+                                            </View>
                                         <View style={[styles.tableCell, styles.predictionColumn]}>
-                                            <Text style={styles.cellText} numberOfLines={2}>
-                                                {prediction.winner_name}
-                                            </Text>
+                                            <View style={styles.predictionNameContainer}>
+                                                {(() => {
+                                                    const winnerName = formatFighterName(prediction.winner_name);
+                                                    return (
+                                                        <>
+                                                            <Text style={styles.fighterFirstName}>
+                                                                {winnerName.firstName}
+                                                            </Text>
+                                                            {winnerName.lastName && (
+                                                                <Text style={styles.fighterLastName}>
+                                                                    {winnerName.lastName}
+                                                                </Text>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </View>
                                             {prediction.result && (
                                                 <Text style={[styles.indicator, prediction.result.fighter ? styles.correct : styles.incorrect]}>
                                                     {prediction.result.fighter ? '✓' : '✗'}
@@ -195,18 +230,19 @@ export default function PredictScreen() {
                                                 </Text>
                                             )}
                                         </View>
-                                        <View style={[styles.tableCell, styles.roundColumn]}>
-                                            <Text style={styles.cellText} numberOfLines={1}>
-                                                {prediction.round ? `R${prediction.round}` : '-'}
-                                            </Text>
-                                            {prediction.result && (
-                                                <Text style={[styles.indicator, prediction.result.round ? styles.correct : styles.incorrect]}>
-                                                    {prediction.result.round ? '✓' : '✗'}
+                                            <View style={[styles.tableCell, styles.roundColumn]}>
+                                                <Text style={styles.cellText} numberOfLines={1}>
+                                                    {prediction.round ? `R${prediction.round}` : '-'}
                                                 </Text>
-                                            )}
+                                                {prediction.result && (
+                                                    <Text style={[styles.indicator, prediction.result.round ? styles.correct : styles.incorrect]}>
+                                                        {prediction.result.round ? '✓' : '✗'}
+                                                    </Text>
+                                                )}
+                                            </View>
                                         </View>
-                                    </View>
-                                ))}
+                                    );
+                                })}
                             </View>
                         )
                     ) : (
@@ -297,11 +333,11 @@ const styles = StyleSheet.create({
     },
     tableRow: {
         flexDirection: 'row',
-        paddingVertical: 8,
+        paddingVertical: 10,
         paddingHorizontal: 6,
         borderBottomWidth: 1,
         borderBottomColor: '#e9ecef',
-        minHeight: 45,
+        minHeight: 80,
         alignItems: 'center',
     },
     evenRow: {
@@ -312,7 +348,7 @@ const styles = StyleSheet.create({
         color: '#212529',
         textAlign: 'center',
         paddingHorizontal: 1,
-        flexWrap: 'wrap',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -437,5 +473,36 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
+    },
+    fighterNamesContainer: {
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    fighterNameWrapper: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    fighterFirstName: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#212529',
+        textAlign: 'center',
+    },
+    fighterLastName: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#212529',
+        textAlign: 'center',
+    },
+    vsText: {
+        fontSize: 10,
+        color: '#6c757d',
+        fontStyle: 'italic',
+        marginVertical: 2,
+    },
+    predictionNameContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
