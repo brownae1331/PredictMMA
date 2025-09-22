@@ -17,22 +17,40 @@ import { Fighter } from '../../types/fighter_types';
 export default function FightersScreen() {
     const [fighters, setFighters] = useState<Fighter[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [page, setPage] = useState(0);
+    const PAGE_SIZE = 10;
 
     useEffect(() => {
-        loadFighters();
+        setFighters([]);
+        setPage(0);
+        loadFighters(true, 0);
     }, []);
 
-    const loadFighters = async () => {
+    const loadFighters = async (reset: boolean = false, requestedOffset: number = 0) => {
         try {
-            setLoading(true);
-            const fighterData = await getAllFighters();
-            setFighters(fighterData);
+            if (reset) {
+                setLoading(true);
+            } else {
+                setLoadingMore(true);
+            }
+            const fighterData = await getAllFighters(requestedOffset, PAGE_SIZE);
+            
+            if (!reset) {
+                setFighters((prev) => [...prev, ...fighterData]);
+            } else {
+                setFighters(fighterData);
+            }
         } catch (error) {
             console.error('Error loading fighters:', error);
             Alert.alert('Error', 'Failed to load fighters');
         } finally {
-            setLoading(false);
+            if (reset) {
+                setLoading(false);
+            } else {
+                setLoadingMore(false);
+            }
         }
     };
 
@@ -51,6 +69,14 @@ export default function FightersScreen() {
         );
     }, [fighters, searchQuery]);
 
+    const loadMoreFighters = async () => {
+        if (loading || loadingMore) return;
+        const nextPage = page + 1;
+        const newOffset = nextPage * PAGE_SIZE;
+        setPage(nextPage);
+        await loadFighters(false, newOffset);
+    };
+
     const handleFighterPress = (fighter_id: number) => {
         router.push({
             pathname: '/fighter-detail',
@@ -60,27 +86,55 @@ export default function FightersScreen() {
         });
     };
 
+    const FighterImage = ({ fighter }: { fighter: Fighter }) => {
+        const [imageLoading, setImageLoading] = useState(true);
+        const [imageError, setImageError] = useState(false);
+
+        const handleImageLoad = () => {
+            setImageLoading(false);
+        };
+
+        const handleImageError = () => {
+            setImageLoading(false);
+            setImageError(true);
+        };
+
+        if (!fighter.image_url || imageError) {
+            return (
+                <View style={styles.fighterImageContainer}>
+                    <View style={styles.fighterImagePlaceholder}>
+                        <Text style={styles.fighterImagePlaceholderText}>
+                            {fighter.name.charAt(0).toUpperCase()}
+                        </Text>
+                    </View>
+                </View>
+            );
+        }
+
+        return (
+            <View style={styles.fighterImageContainer}>
+                {imageLoading && (
+                    <View style={styles.imageLoadingOverlay}>
+                        <ActivityIndicator size="small" color="#000" />
+                    </View>
+                )}
+                <Image 
+                    source={{ uri: fighter.image_url }} 
+                    style={styles.fighterImage}
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                />
+            </View>
+        );
+    };
+
     const renderFighter = ({ item }: { item: Fighter }) => (
         <TouchableOpacity 
             style={styles.fighterCard} 
             onPress={() => handleFighterPress(item.id)}
             activeOpacity={0.7}
         >
-            <View style={styles.fighterImageContainer}>
-                {item.image_url ? (
-                    <Image 
-                        source={{ uri: item.image_url }} 
-                        style={styles.fighterImage}
-                        defaultSource={require('../../../assets/images/icon.png')}
-                    />
-                ) : (
-                    <View style={styles.fighterImagePlaceholder}>
-                        <Text style={styles.fighterImagePlaceholderText}>
-                            {item.name.charAt(0).toUpperCase()}
-                        </Text>
-                    </View>
-                )}
-            </View>
+            <FighterImage fighter={item} />
             
             <View style={styles.fighterInfo}>
                 <Text style={styles.fighterName}>{item.name}</Text>
@@ -130,7 +184,7 @@ export default function FightersScreen() {
             <View style={styles.mainContent}>
                 {loading ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#007AFF" />
+                        <ActivityIndicator size="large" color="#000" style={styles.loader} />
                         <Text style={styles.loadingText}>Loading fighters...</Text>
                     </View>
                 ) : filteredFighters.length === 0 ? (
@@ -152,6 +206,11 @@ export default function FightersScreen() {
                         keyExtractor={(item) => item.id.toString()}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={styles.listContainer}
+                        onEndReached={loadMoreFighters}
+                        onEndReachedThreshold={0.5}
+                        ListFooterComponent={() => (
+                            loadingMore ? <ActivityIndicator size="small" color="#000" style={styles.loader} /> : null
+                        )}
                     />
                 )}
             </View>
@@ -210,6 +269,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#666',
     },
+    loader: {
+        marginTop: 50,
+    },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -254,12 +316,25 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         marginRight: 16,
+        position: 'relative',
     },
     fighterImage: {
         width: 60,
         height: 60,
         borderRadius: 30,
         backgroundColor: '#f0f0f0',
+    },
+    imageLoadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 30,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1,
     },
     fighterImagePlaceholder: {
         width: 60,

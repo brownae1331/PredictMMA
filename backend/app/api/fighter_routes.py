@@ -7,9 +7,13 @@ from app.core.utils.string_utils import get_flag_image_url
 router = APIRouter()
 
 @router.get("/")
-def get_all_fighters(db: db_dependency) -> list[Fighter]:
-    """Get all fighters"""
-    fighters = db.query(models.Fighter).all()
+def get_all_fighters(
+    db: db_dependency, 
+    offset: int = Query(0, ge=0, description="Number of fighters to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Number of fighters to return")
+) -> list[Fighter]:
+    """Get all fighters with pagination"""
+    fighters = db.query(models.Fighter).offset(offset).limit(limit).all()
     
     return [
         Fighter(

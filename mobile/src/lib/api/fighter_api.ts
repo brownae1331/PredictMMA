@@ -3,8 +3,10 @@ import { handleResponse } from '../utils/apiUtils';
 import { Fighter, FighterSearchResponse } from '../../types/fighter_types';
 import { FighterFightHistory } from '../../types/fight_types';
 
-export async function getAllFighters(): Promise<Fighter[]> {
+export async function getAllFighters(offset: number = 0, limit: number = 10): Promise<Fighter[]> {
     const url = new URL(`${API_CONFIG.BASE_URL}/fighters`);
+    url.searchParams.append('offset', offset.toString());
+    url.searchParams.append('limit', limit.toString());
     const headers: Record<string, string> = { ...API_CONFIG.HEADERS };
 
     const response = await fetch(url.toString(), {
