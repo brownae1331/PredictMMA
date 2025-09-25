@@ -1,0 +1,8 @@
+{
+  "name": "production",
+  "variables": {
+    "PYTHONPATH": "/app",
+    "DB_INIT_RETRIES": "30",
+    "DB_INIT_DELAY_SECONDS": "5"
+  }
+}
