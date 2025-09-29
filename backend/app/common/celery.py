@@ -1,7 +1,11 @@
 from celery import Celery
+import os
 
-broker_url = "redis://redis:6379/0"
-result_backend = "redis://redis:6379/1"
+broker_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+result_backend = os.getenv("REDIS_URL", "redis://redis:6379/1")
+
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    result_backend = broker_url + "/1"
 
 celery_app = Celery(
     "predictmma",

@@ -5,7 +5,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 import os
 
-URL_DATABASE =  "postgresql://postgres:postgres@postgres:5432/predictmma" 
+URL_DATABASE = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/predictmma")
 
 engine = create_engine(
     URL_DATABASE,
