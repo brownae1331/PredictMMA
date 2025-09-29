@@ -24,6 +24,8 @@ async def register(user: UserRegister, db: db_dependency):
     db.commit()
     db.refresh(new_user)
 
+    return {"message": "User registered successfully", "username": new_user.username}
+
 @router.post("/login")
 async def login(user: UserLogin, db: db_dependency):
     """
