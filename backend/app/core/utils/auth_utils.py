@@ -11,9 +11,17 @@ bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def verify_password(plain_password, hashed_password):
+    # Ensure password doesn't exceed bcrypt's 72 byte limit (same as during hashing)
+    password_bytes = plain_password.encode('utf-8')
+    if len(password_bytes) > 72:
+        plain_password = plain_password[:72]
     return bcrypt_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
+    # Ensure password doesn't exceed bcrypt's 72 byte limit
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password = password[:72]
     return bcrypt_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
