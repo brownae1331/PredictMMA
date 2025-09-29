@@ -15,8 +15,9 @@ async def test_auth():
 async def test_db(db: db_dependency):
     """Test database connection."""
     try:
+        from sqlalchemy import text
         # Test database connection
-        result = db.execute("SELECT 1 as test").fetchone()
+        result = db.execute(text("SELECT 1 as test")).fetchone()
         return {"message": "Database connection working", "test": result[0]}
     except Exception as e:
         return {"message": "Database connection failed", "error": str(e)}
