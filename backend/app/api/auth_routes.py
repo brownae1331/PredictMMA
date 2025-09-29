@@ -22,6 +22,37 @@ async def test_db(db: db_dependency):
     except Exception as e:
         return {"message": "Database connection failed", "error": str(e)}
 
+@router.post("/test-register-minimal")
+async def test_register_minimal(db: db_dependency):
+    """Test minimal registration logic."""
+    try:
+        # Test basic User creation without external dependencies
+        test_user = models.User(
+            username="testuser" + str(len("test")),
+            hashed_password="test_hashed_password"
+        )
+        db.add(test_user)
+        db.commit()
+        db.refresh(test_user)
+        return {"message": "Minimal user creation works", "user_id": test_user.id}
+    except Exception as e:
+        return {"message": "Minimal user creation failed", "error": str(e)}
+
+@router.post("/test-password-hash")
+async def test_password_hash():
+    """Test password hashing functionality."""
+    try:
+        test_password = "testpassword123"
+        hashed = get_password_hash(test_password)
+        is_valid = verify_password(test_password, hashed)
+        return {
+            "message": "Password hashing works",
+            "hash_length": len(hashed),
+            "verification": is_valid
+        }
+    except Exception as e:
+        return {"message": "Password hashing failed", "error": str(e)}
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserRegister, db: db_dependency):
     """
