@@ -6,6 +6,21 @@ from app.core.utils.auth_utils import create_access_token, get_password_hash, ve
 
 router = APIRouter()
 
+@router.get("/test")
+async def test_auth():
+    """Test endpoint to check if auth routes are working."""
+    return {"message": "Auth routes are working"}
+
+@router.post("/test-db")
+async def test_db(db: db_dependency):
+    """Test database connection."""
+    try:
+        # Test database connection
+        result = db.execute("SELECT 1 as test").fetchone()
+        return {"message": "Database connection working", "test": result[0]}
+    except Exception as e:
+        return {"message": "Database connection failed", "error": str(e)}
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserRegister, db: db_dependency):
     """
