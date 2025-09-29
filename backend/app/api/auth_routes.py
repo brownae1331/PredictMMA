@@ -42,21 +42,18 @@ async def test_register_minimal(db: db_dependency):
 async def test_password_hash():
     """Test password hashing functionality."""
     try:
-        from passlib.context import CryptContext
-        # Test with a fresh CryptContext to isolate the issue
-        test_bcrypt = CryptContext(schemes=["bcrypt"], deprecated="auto")
         test_password = "test123"
 
-        hashed = test_bcrypt.hash(test_password)
-        is_valid = test_bcrypt.verify(test_password, hashed)
+        hashed = get_password_hash(test_password)
+        is_valid = verify_password(test_password, hashed)
 
         return {
-            "message": "Direct bcrypt test works",
-            "hash_length": len(hashed),
+            "message": "SHA-256 hashing test works",
+            "hash_sample": hashed[:20] + "...",
             "verification": is_valid
         }
     except Exception as e:
-        return {"message": "Direct bcrypt test failed", "error": str(e)}
+        return {"message": "SHA-256 hashing test failed", "error": str(e)}
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserRegister, db: db_dependency):
