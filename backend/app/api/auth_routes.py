@@ -43,15 +43,17 @@ async def test_password_hash():
     """Test password hashing functionality."""
     try:
         test_password = "testpassword123"
-        hashed = get_password_hash(test_password)
-        is_valid = verify_password(test_password, hashed)
+        password_bytes = test_password.encode('utf-8')
+
         return {
-            "message": "Password hashing works",
-            "hash_length": len(hashed),
-            "verification": is_valid
+            "message": "Password length debug info",
+            "password": test_password,
+            "password_length_chars": len(test_password),
+            "password_length_bytes": len(password_bytes),
+            "password_bytes": list(password_bytes)[:20]  # First 20 bytes for debug
         }
     except Exception as e:
-        return {"message": "Password hashing failed", "error": str(e)}
+        return {"message": "Password debug failed", "error": str(e)}
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserRegister, db: db_dependency):
