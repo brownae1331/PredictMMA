@@ -14,22 +14,20 @@ from app.schemas.scraper_schemas import Event
 
 class UFCStatsEventScraper:
     def __init__(self):
-        self.base_url = "http://ufcstats.com/statistics/events/completed"
+        self.base_url = "http://ufcstats.com/statistics/events/"
         self.scraper = requests.Session()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         }
 
-    def get_all_events(self):
-        pass
-
-    def get_past_events(self) -> list[Event]:
-        url = urljoin(self.base_url, "?page=all")
+    def parse_events_from_page(self, page_path: str) -> list[Event]:
+        url = urljoin(self.base_url, page_path)
         response = self.scraper.get(url, headers=self.headers)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        events = soup.find_all("tr", class_="b-statistics__table-row")
-        for event in events:
+        events = []
+        event_containers = soup.find_all("tr", class_="b-statistics__table-row")
+        for event in event_containers:
             left_container = event.find("td", class_="b-statistics__table-col")
             if not left_container:
                 continue
@@ -50,3 +48,25 @@ class UFCStatsEventScraper:
                 location=location,
                 organizer="UFC",
             ))
+
+        return events
+
+    def get_ufc_1(self) -> Event:
+        """Doesn't show up in the completed events page, so we need to add it manually."""
+        return Event(
+            url="http://ufcstats.com/event-details/6420efac0578988b",
+            title="UFC 1: The Beginning",
+            date=datetime(1993, 11, 12),
+            location="Denver, Colorado, USA",
+            organizer="UFC",
+        )
+
+    def get_all_events(self) -> list[Event]:
+        events = self.parse_events_from_page("completed?page=all")
+        events.extend(self.parse_events_from_page("upcoming?page=all"))
+        events.append(self.get_ufc_1())
+        return events
+
+
+ufc = UFCStatsEventScraper()
+print(ufc.get_all_events())
