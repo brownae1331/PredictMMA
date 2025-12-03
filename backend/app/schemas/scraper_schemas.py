@@ -1,4 +1,5 @@
 from datetime import datetime, date
+from re import S
 from pydantic import BaseModel
 
 class Event(BaseModel):
@@ -11,16 +12,14 @@ class Event(BaseModel):
 class Fighter(BaseModel):
     url: str
     name: str
-    nickname: str
-    image_url: str
-    record: str
-    ranking: str
-    country: str
-    city: str
-    dob: date | None
-    height: str
-    weight_class: str
-    association: str
+    nickname: str | None
+    height: str | None
+    weight: str | None
+    reach: str | None
+    stance: str | None
+    wins: int
+    losses: int
+    draws: int
 
 class Fight(BaseModel):
     event_url: str

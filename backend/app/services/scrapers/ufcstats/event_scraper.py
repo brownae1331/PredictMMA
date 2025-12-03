@@ -1,11 +1,3 @@
-import sys
-from pathlib import Path
-
-# Add backend directory to path so imports work when running as script
-backend_dir = Path(__file__).parent.parent.parent.parent.parent
-if str(backend_dir) not in sys.path:
-    sys.path.insert(0, str(backend_dir))
-
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -66,7 +58,3 @@ class UFCStatsEventScraper:
         events.extend(self.parse_events_from_page("upcoming?page=all"))
         events.append(self.get_ufc_1())
         return events
-
-
-ufc = UFCStatsEventScraper()
-print(ufc.get_all_events())
