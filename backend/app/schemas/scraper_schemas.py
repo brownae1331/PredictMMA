@@ -26,8 +26,8 @@ class Fight(BaseModel):
     fighter_1_url: str
     fighter_2_url: str
     match_number: int
-    weight_class: str
-    winner: str
-    method: str
-    round: int
-    time: str
+    weight_class: str | None
+    winner: bool
+    method: str | None
+    round: int | None
+    time: str | None
