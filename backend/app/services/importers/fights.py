@@ -107,12 +107,9 @@ class FightsImporter:
         if not fighter_2:
             raise ValueError(f"Fighter with URL {fight.fighter_2_url} not found")
 
-        # Convert winner bool to string (fighter name or None)
-        # Note: The scraper only provides a boolean indicating if there's a winner,
-        # but doesn't specify which fighter won. We'll set it to None for now.
-        # To properly determine the winner, the scraper would need to be enhanced
-        # to check which fighter the winner flag is associated with.
-        winner_str = None
+        # Use winner string directly from scraper
+        # Winner can be "fighter_1", "fighter_2", "draw", "no contest", or None
+        winner_str = fight.winner
 
         existing = (
             self.db.query(FightModel)

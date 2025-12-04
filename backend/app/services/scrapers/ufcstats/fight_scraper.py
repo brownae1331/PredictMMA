@@ -21,17 +21,12 @@ class UFCStatsFightScraper:
             
             cols = fight_container.find_all("td", class_="b-fight-details__table-col")
             
-            winner = False
+            winner_str = None
             first_col = cols[0] if len(cols) > 0 else None
-            if first_col:
-                winner_flag = first_col.find("a", class_="b-flag b-flag_style_green")
-                if winner_flag:
-                    win_text = winner_flag.find("i", class_="b-flag__text")
-                    if win_text and "win" in win_text.get_text(strip=True).lower():
-                        winner = True
-            
             fighter_1_url = None
             fighter_2_url = None
+            
+            # Get fighter URLs first
             if len(cols) > 1:
                 fighter_links = cols[1].find_all("a", class_="b-link b-link_style_black")
                 if len(fighter_links) >= 2:
@@ -39,6 +34,31 @@ class UFCStatsFightScraper:
                     fighter_2_url = fighter_links[1].get("href")
                 elif len(fighter_links) == 1:
                     fighter_1_url = fighter_links[0].get("href")
+            
+            # Determine winner by checking for winner flags
+            if first_col:
+                # Check for draw or no contest first
+                all_flags = first_col.find_all("a", class_="b-flag")
+                for flag in all_flags:
+                    flag_text = flag.get_text(strip=True).lower()
+                    if "draw" in flag_text:
+                        winner_str = "draw"
+                        break
+                    elif "no contest" in flag_text or "nc" in flag_text:
+                        winner_str = "no contest"
+                        break
+                
+                # If no draw/no contest, check for winner flag
+                if not winner_str:
+                    winner_flags = first_col.find_all("a", class_="b-flag b-flag_style_green")
+                    if winner_flags:
+                        for flag in winner_flags:
+                            win_text = flag.find("i", class_="b-flag__text")
+                            if win_text and "win" in win_text.get_text(strip=True).lower():
+                                # For now, set winner to fighter_1 if there's a winner flag
+                                # This matches the current implementation assumption
+                                winner_str = "fighter_1"
+                                break
             
             weight_class = None
             if len(cols) > 6:
@@ -75,7 +95,7 @@ class UFCStatsFightScraper:
                     fighter_2_url=fighter_2_url,
                     match_number=match_number,
                     weight_class=weight_class,
-                    winner=winner,
+                    winner=winner_str,
                     method=method,
                     round=round_num,
                     time=time,

@@ -108,7 +108,7 @@ def get_main_events(db: db_dependency, limit: int = 3) -> list[MainEvent]:
         main_event_fight = (
             db.query(models.Fight)
             .filter(models.Fight.event_id == event.id)
-            .order_by(models.Fight.match_number.desc())
+            .order_by(models.Fight.match_number)
             .first()
         )
 

@@ -38,7 +38,13 @@ export default function FightersScreen() {
             const fighterData = await getAllFighters(requestedOffset, PAGE_SIZE);
             
             if (!reset) {
-                setFighters((prev) => [...prev, ...fighterData]);
+                setFighters((prev) => {
+                    // Create a Set of existing fighter IDs for quick lookup
+                    const existingIds = new Set(prev.map(f => f.id));
+                    // Filter out duplicates from new data
+                    const newFighters = fighterData.filter(f => !existingIds.has(f.id));
+                    return [...prev, ...newFighters];
+                });
             } else {
                 setFighters(fighterData);
             }
@@ -203,7 +209,7 @@ export default function FightersScreen() {
                     <FlatList
                         data={filteredFighters}
                         renderItem={renderFighter}
-                        keyExtractor={(item) => item.id.toString()}
+                        keyExtractor={(item, index) => `${item.id}-${index}`}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={styles.listContainer}
                         onEndReached={loadMoreFighters}
