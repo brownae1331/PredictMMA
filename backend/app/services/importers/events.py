@@ -2,16 +2,18 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.db.models.models import Event as EventModel
 from app.schemas.sherdog_schemas import Event as EventSchema
+from app.schemas.scraper_schemas import Event as ScraperEventSchema
 
 class EventsImporter:
     """
     Class for importing events.
+    Supports both sherdog_schemas and scraper_schemas.
     """
 
     def __init__(self, db: Session):
         self.db = db
 
-    def upsert(self, event: EventSchema) -> EventModel:
+    def upsert(self, event: EventSchema | ScraperEventSchema) -> EventModel:
         existing = (
             self.db.query(EventModel)
             .filter_by(url=event.url)
