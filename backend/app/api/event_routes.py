@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.db.database import db_dependency
 from app.db.models import models
 from app.schemas.event_schemas import Event, MainEvent
-from datetime import datetime
+from sqlalchemy import func
 import pycountry
 
 router = APIRouter()
@@ -39,9 +39,12 @@ def get_upcoming_events(db: db_dependency, offset: int = 0, limit: int = 10) -> 
     if limit <= 0:
         raise HTTPException(status_code=400, detail="Limit must be greater than 0")
 
+    # Compare dates at start of day since events are stored at 00:00:00
+    # Events happening today or in the future should be in upcoming
+    today_at_midnight = func.date_trunc('day', func.now())
     db_events = (
         db.query(models.Event)
-        .filter(models.Event.date >= datetime.now())
+        .filter(func.date_trunc('day', models.Event.date) >= today_at_midnight)
         .order_by(models.Event.date)
         .offset(offset)
         .limit(limit)
@@ -67,9 +70,12 @@ def get_past_events(db: db_dependency, offset: int = 0, limit: int = 10) -> list
     if limit <= 0:
         raise HTTPException(status_code=400, detail="Limit must be greater than 0")
 
+    # Compare dates at start of day since events are stored at 00:00:00
+    # Only events before today should be in past (today's events are upcoming)
+    today_at_midnight = func.date_trunc('day', func.now())
     db_events = (
         db.query(models.Event)
-        .filter(models.Event.date < datetime.now())
+        .filter(func.date_trunc('day', models.Event.date) < today_at_midnight)
         .order_by(models.Event.date.desc())
         .offset(offset)
         .limit(limit)
@@ -92,9 +98,12 @@ def get_past_events(db: db_dependency, offset: int = 0, limit: int = 10) -> list
 def get_main_events(db: db_dependency, limit: int = 3) -> list[MainEvent]:
     """Return the main events for the home page."""
 
+    # Compare dates at start of day since events are stored at 00:00:00
+    # Events happening today or in the future should be in upcoming
+    today_at_midnight = func.date_trunc('day', func.now())
     db_events = (
         db.query(models.Event)
-        .filter(models.Event.date >= datetime.now())
+        .filter(func.date_trunc('day', models.Event.date) >= today_at_midnight)
         .order_by(models.Event.date)
         .limit(limit).all()
         )
