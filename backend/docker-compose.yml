@@ -8,6 +8,12 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=predictmma
     depends_on:
       - postgres
       - redis
@@ -47,6 +53,11 @@ services:
     volumes:
       - .:/app
     environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=predictmma
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
     restart: unless-stopped
@@ -65,6 +76,11 @@ services:
     volumes:
       - .:/app
     environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=predictmma
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
     restart: unless-stopped
@@ -86,6 +102,11 @@ services:
     volumes:
       - .:/app
     environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=predictmma
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - FLOWER_UNAUTHENTICATED_API=true

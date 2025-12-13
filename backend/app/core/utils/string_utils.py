@@ -11,10 +11,13 @@ def strip_accents(text: str) -> str:
     normalized = unicodedata.normalize("NFKD", text)
     return "".join(c for c in normalized if not unicodedata.combining(c))
 
-def get_flag_image_url(location: str) -> str:
+def get_flag_image_url(location: str | None) -> str:
     """
     Finds a flag image from the location string using flagcdn.com.
     """
+    if not location:
+        return ""
+    
     SPECIAL_CASES = {
         "England": "gb-eng",
         "Scotland": "gb-sct",

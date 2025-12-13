@@ -27,7 +27,7 @@ class Fight(BaseModel):
     fighter_2_url: str
     match_number: int
     weight_class: str | None
-    winner: bool
+    winner: str | None  # "fighter_1", "fighter_2", "draw", "no contest", or None
     method: str | None
     round: int | None
     time: str | None

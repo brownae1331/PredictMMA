@@ -5,6 +5,7 @@ from app.schemas.fight_schemas import Fight, FightResult, ResultType
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from app.core.utils.string_utils import get_flag_image_url
+from sqlalchemy import desc
 
 router = APIRouter()
 
@@ -16,7 +17,7 @@ def get_fights_by_event(event_id: int, db: db_dependency) -> list[Fight]:
     db_fights = (
         db.query(models.Fight)
         .filter(models.Fight.event_id == event_id)
-        .order_by(models.Fight.match_number)
+        .order_by(desc(models.Fight.match_number))
         .all()
     )
 
@@ -136,7 +137,14 @@ def get_fight_result_by_id(fight_id: int, db: db_dependency) -> FightResult | No
     elif db_fight.winner == "no contest":
         result_type = ResultType.NO_CONTEST
         winner_id = None
+    elif db_fight.winner == "fighter_1":
+        result_type = ResultType.WIN
+        winner_id = db_fight.fighter_1_id
+    elif db_fight.winner == "fighter_2":
+        result_type = ResultType.WIN
+        winner_id = db_fight.fighter_2_id
     else:
+        # If winner is set but not recognized, assume fighter_1 (backward compatibility)
         result_type = ResultType.WIN
         winner_id = db_fight.fighter_1_id
 

@@ -128,6 +128,11 @@ def get_fighter_fight_history(fighter_id: int, db: db_dependency) -> list[Fighte
                     result = "Win"
                 else:
                     result = "Loss"
+            elif fight.winner == "fighter_2":
+                if fight.fighter_2_id == fighter_id:
+                    result = "Win"
+                else:
+                    result = "Loss"
             else:
                 result = "N/A"
         
