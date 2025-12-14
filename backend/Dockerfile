@@ -5,12 +5,12 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt ./
+COPY backend/requirements.txt ./requirements.txt
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-COPY . .
+COPY backend/ .
 
 EXPOSE 8000
 
