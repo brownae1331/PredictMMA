@@ -6,11 +6,7 @@ beautifulsoup4==4.12.2
 python-dateutil==2.8.2 
 pycountry==24.6.1
 sqlalchemy==2.0.41
-celery==5.3.6
-redis==5.0.1
 psycopg2-binary>=2.9.10
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
 python-jose[cryptography]==3.3.0
-gevent>=24.2.1
-flower==2.0.1

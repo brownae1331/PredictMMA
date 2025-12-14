@@ -1,17 +1,15 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from app.core.config import add_cors
-from app.db.database import engine, get_db
+from app.db.database import engine
 from app.db.models import models
 from app.api.auth_routes import router as auth_routes
 from app.api.predict_routes import router as predict_routes
 from app.api.event_routes import router as event_routes
 from app.api.fight_routes import router as fight_routes
 from app.api.fighter_routes import router as fighter_routes
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 import time
 import os
-from app.tasks.tasks import sync_all_ufc_events, sync_recent_ufc_events
 
 app = FastAPI()
 
@@ -41,15 +39,11 @@ app.include_router(fight_routes, prefix="/fights", tags=["Fights"])
 app.include_router(fighter_routes, prefix="/fighters", tags=["Fighters"])
 
 @app.get("/")
-def read_root(db: Session = Depends(get_db)):
-    """Root endpoint: trigger a full UFC data scrape and seeding operation (async via Celery)."""
-    try:
-        print("Starting UFC sync...")
+def read_root():
+    """Root endpoint."""
+    return {"status": "ok"}
 
-        sync_recent_ufc_events.apply_async()
-
-        return {"message": "UFC sync scheduled."}
-    except Exception as exc:
-        # Avoid crashing the request handler on transient scraper/celery errors
-        print(f"Failed to schedule UFC sync: {exc}")
-        return {"message": "Failed to schedule UFC sync", "error": str(exc)}
+@app.get("/health")
+def health():
+    """Healthcheck endpoint for deploy platforms (no DB dependency)."""
+    return {"status": "ok"}
