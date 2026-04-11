@@ -53,6 +53,9 @@ class UFCStatsEventScraper:
             organizer="UFC",
         )
 
+    def get_upcoming_events(self) -> list[Event]:
+        return self.parse_events_from_page("upcoming?page=all")
+
     def get_all_events(self) -> list[Event]:
         events = self.parse_events_from_page("completed?page=all")
         events.extend(self.parse_events_from_page("upcoming?page=all"))

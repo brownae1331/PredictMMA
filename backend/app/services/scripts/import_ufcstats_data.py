@@ -3,7 +3,7 @@
 Script to import events, fights, and fighters from ufcstats.com into the database.
 
 Usage:
-    python import_ufcstats_data.py [--events-only] [--fighters-only] [--fights-only] [--limit N]
+    python import_ufcstats_data.py [--events-only] [--fighters-only] [--fights-only] [--upcoming-only] [--limit N]
 
 Examples:
     # Import everything
@@ -20,6 +20,15 @@ Examples:
 
     # Import only first 10 events
     python import_ufcstats_data.py --limit 10
+
+    # Import only upcoming events (from ufcstats upcoming list)
+    python import_ufcstats_data.py --events-only --upcoming-only
+
+    # Full import but only upcoming events + fights on those cards (still imports all fighters)
+    python import_ufcstats_data.py --upcoming-only
+
+    # Import fights only for upcoming events
+    python import_ufcstats_data.py --fights-only --upcoming-only
 """
 
 import argparse
@@ -50,14 +59,17 @@ def session_scope():
         db.close()
 
 
-def import_events(limit: Optional[int] = None):
-    """Import all events from ufcstats."""
+def import_events(limit: Optional[int] = None, upcoming_only: bool = False):
+    """Import events from ufcstats (all, or upcoming list only)."""
     print("=" * 60)
-    print("Importing Events from UFCStats")
+    if upcoming_only:
+        print("Importing Upcoming Events from UFCStats")
+    else:
+        print("Importing Events from UFCStats")
     print("=" * 60)
     
     scraper = UFCStatsEventScraper()
-    events = scraper.get_all_events()
+    events = scraper.get_upcoming_events() if upcoming_only else scraper.get_all_events()
     
     if limit:
         events = events[:limit]
@@ -200,6 +212,36 @@ def import_fights_for_all_events(limit: Optional[int] = None):
         print(f"\n✅ Total fights imported: {total_fights}")
 
 
+def _import_fights_for_scraped_events(events: list) -> None:
+    """Import fights for each scraped Event (objects with .url and .title)."""
+    total_fights = 0
+    for i, event in enumerate(events, 1):
+        print(f"\n[{i}/{len(events)}] Processing event: {event.title}")
+        try:
+            fights = import_fights_for_event(event.url)
+            total_fights += len(fights)
+        except Exception as e:
+            print(f"Error processing event {event.title}: {e}")
+            continue
+    print(f"\n✅ Total fights imported: {total_fights}")
+
+
+def import_fights_for_upcoming_events(limit: Optional[int] = None):
+    """Import fights for each event on the ufcstats upcoming list."""
+    print("=" * 60)
+    print("Importing Fights for Upcoming Events")
+    print("=" * 60)
+
+    scraper = UFCStatsEventScraper()
+    events = scraper.get_upcoming_events()
+    if limit:
+        events = events[:limit]
+        print(f"Limiting to first {limit} upcoming events")
+
+    print(f"Found {len(events)} upcoming events")
+    _import_fights_for_scraped_events(events)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Import events, fights, and fighters from ufcstats.com"
@@ -229,32 +271,46 @@ def main():
         type=int,
         help="Limit the number of items to import"
     )
+    parser.add_argument(
+        "--upcoming-only",
+        action="store_true",
+        help="Only use ufcstats upcoming events (with --events-only, default full run, or --fights-only)",
+    )
     
     args = parser.parse_args()
     
     # Validate arguments
-    if args.fights_only and args.event_url:
-        import_fights_for_event(args.event_url)
-        return
-    
     if args.fights_only:
+        if args.event_url and args.upcoming_only:
+            parser.error("Cannot use --event-url together with --upcoming-only")
+        if args.event_url:
+            import_fights_for_event(args.event_url)
+            return
+        if args.upcoming_only:
+            import_fights_for_upcoming_events(args.limit)
+            return
         import_fights_for_all_events(args.limit)
         return
     
     if args.events_only:
-        import_events(args.limit)
+        import_events(args.limit, upcoming_only=args.upcoming_only)
         return
     
     if args.fighters_only:
+        if args.upcoming_only:
+            print("Note: --upcoming-only has no effect with --fighters-only; importing all fighters.\n")
         import_fighters()
         return
     
     # Import everything
-    print("Importing all data from UFCStats...")
+    if args.upcoming_only:
+        print("Importing upcoming-card data from UFCStats (events + fights on those cards)...")
+    else:
+        print("Importing all data from UFCStats...")
     print("This may take a while.\n")
     
     # Step 1: Import events
-    events = import_events(args.limit)
+    events = import_events(args.limit, upcoming_only=args.upcoming_only)
     print("\n")
     
     # Step 2: Import fighters (required before importing fights)
@@ -262,9 +318,12 @@ def main():
     import_fighters()
     print("\n")
     
-    # Step 3: Import fights for all events
-    print("Importing fights for all events...")
-    import_fights_for_all_events(args.limit)
+    # Step 3: Import fights
+    print("Importing fights...")
+    if args.upcoming_only:
+        _import_fights_for_scraped_events(events)
+    else:
+        import_fights_for_all_events(args.limit)
     
     print("\n" + "=" * 60)
     print("✅ All imports complete!")
@@ -273,4 +332,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
